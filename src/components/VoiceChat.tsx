@@ -224,12 +224,12 @@ export default function VoiceChat() {
         console.log('Audio track state:', audioTracks[0].readyState);
       }
       
-      // Play local audio for testing (not muted so user can hear themselves)
+      // Set up local audio (muted so you don't hear yourself)
       const localAudio = document.getElementById('localAudio') as HTMLAudioElement;
       if (localAudio) {
         localAudio.srcObject = stream;
-        localAudio.volume = 0.3; // Lower volume for feedback
-        localAudio.muted = false; // Allow user to hear themselves
+        localAudio.volume = 0; // Muted
+        localAudio.muted = true; // Muted - you should only hear remote partner, not yourself
         
         // Resume audio context if needed
         if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
