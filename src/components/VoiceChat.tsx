@@ -373,16 +373,14 @@ export default function VoiceChat() {
             });
           }, 2000);
           
-          // Set up audio analysis and output to speakers
+          // Set up audio analysis using original stream (don't clone)
           if (audioContextRef.current && event.streams[0]) {
-            // Clone the remote stream for analysis
-            const clonedRemoteStream = event.streams[0].clone();
-            const remoteSource = audioContextRef.current.createMediaStreamSource(clonedRemoteStream);
+            const remoteSource = audioContextRef.current.createMediaStreamSource(event.streams[0]);
             const remoteAnalyser = audioContextRef.current.createAnalyser();
             remoteAnalyser.fftSize = 256;
             remoteSource.connect(remoteAnalyser);
             
-            // CRITICAL: Connect to speakers!
+            // Connect to speakers
             remoteSource.connect(audioContextRef.current.destination);
             console.log('✅ Connected remote audio to speakers');
             
