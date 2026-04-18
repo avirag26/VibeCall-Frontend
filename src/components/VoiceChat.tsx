@@ -461,6 +461,25 @@ export default function VoiceChat() {
   };
 
   const startChat = () => {
+    // Initialize audio context on user interaction (required by browser)
+    if (!audioContextRef.current) {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioContextClass) {
+        audioContextRef.current = new AudioContextClass();
+      }
+    }
+    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+      audioContextRef.current.resume();
+    }
+    
+    // Try to unlock audio elements
+    const remoteAudio = document.getElementById('remoteAudio') as HTMLAudioElement;
+    if (remoteAudio) {
+      remoteAudio.volume = 1.0;
+      remoteAudio.muted = false;
+      remoteAudio.play().catch(() => {}); // Try to unlock, ignore errors
+    }
+    
     if (socketRef.current) {
       setConnectionStatus({
         status: 'connecting',
