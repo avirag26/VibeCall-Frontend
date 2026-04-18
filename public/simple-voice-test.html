@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Voice Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        button { padding: 10px 20px; margin: 10px; font-size: 16px; }
+        #status { margin: 10px 0; padding: 10px; background: #f0f0f0; }
+        audio { width: 100%; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Voice Chat Test</h1>
+    <div id="status">Initializing...</div>
+    
+    <audio id="localAudio" controls autoplay muted></audio>
+    <audio id="remoteAudio" controls autoplay></audio>
+    
+    <button onclick="startLocal()">Start Local Audio</button>
+    <button onclick="connectToPeer()">Connect to Peer</button>
+    <button onclick="sendTestAudio()">Send Test Audio</button>
+    
+    <script>
+        let localStream;
+        let remoteStream;
+        let peerConnection;
+        let socket;
+        
+        // Connect to backend
+        function connectToBackend() {
+            socket = io('https://btl8ztp5-3001.inc1.devtunnels.ms/');
+            
+            socket.on('connect', () => {
+                document.getElementById('status').innerHTML = 'Connected to backend';
+            });
+            
+            socket.on('user-id', (id) => {
+                console.log('User ID:', id);
+            });
+            
+            socket.on('partner-found', (data) => {
+                console.log('Partner found:', data.partnerId);
+                startWebRTC(data.partnerId);
+            });
+            
+            socket.on('webrtc-signal', async (data) => {
+                if (data.type === 'offer') {
+                    await handleOffer(data.payload);
+                } else if (data.type === 'answer') {
+                    await handleAnswer(data.payload);
+                } else if (data.type === 'ice-candidate') {
+                    await handleIceCandidate(data.payload);
+                }
+            });
+        }
+        
+        async function startWebRTC(partnerId) {
+            console.log('Starting WebRTC with partner:', partnerId);
+            
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                document.getElementById('localAudio').srcObject = localStream;
+                
+                const config = {
+                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+                };
+                
+                peerConnection = new RTCPeerConnection(config);
+                
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+                
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        socket.emit('webrtc-signal', {
+                            type: 'ice-candidate',
+                            payload: event.candidate,
+                            targetUserId: partnerId
+                        });
+                    }
+                };
+                
+                peerConnection.ontrack = (event) => {
+                    console.log('Received remote stream:', event.streams[0]);
+                    remoteStream = event.streams[0];
+                    document.getElementById('remoteAudio').srcObject = remoteStream;
+                };
+                
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                
+                socket.emit('webrtc-signal', {
+                    type: 'offer',
+                    payload: offer,
+                    targetUserId: partnerId
+                });
+                
+            } catch (error) {
+                console.error('WebRTC error:', error);
+                document.getElementById('status').innerHTML = 'Error: ' + error.message;
+            }
+        }
+        
+        async function handleOffer(offer) {
+            await peerConnection.setRemoteDescription(offer);
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            
+            socket.emit('webrtc-signal', {
+                type: 'answer',
+                payload: answer,
+                targetUserId: partnerId
+            });
+        }
+        
+        async function handleAnswer(answer) {
+            await peerConnection.setRemoteDescription(answer);
+        }
+        
+        async function handleIceCandidate(candidate) {
+            await peerConnection.addIceCandidate(candidate);
+        }
+        
+        function startLocal() {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    document.getElementById('localAudio').srcObject = stream;
+                    localStream = stream;
+                })
+                .catch(error => {
+                    console.error('Microphone error:', error);
+                });
+        }
+        
+        function connectToPeer() {
+            connectToBackend();
+            socket.emit('find-partner');
+        }
+        
+        function sendTestAudio() {
+            if (localStream) {
+                console.log('Playing test audio...');
+                // Test audio playback
+                const audio = new Audio('data:audio/wav;base64,UklGRiQAAABXRUJ');
+                audio.play();
+            }
+        }
+        
+        // Auto-connect to backend
+        connectToBackend();
+    </script>
+</body>
+</html>

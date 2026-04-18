@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Peer-to-Peer Voice Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        button { padding: 10px 20px; margin: 10px; font-size: 16px; }
+        #status { margin: 10px 0; padding: 10px; background: #f0f0f0; }
+        .user { background: #e3f2fd; padding: 10px; margin: 5px 0; }
+        .partner { background: #fef3c7; padding: 10px; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <h1>Peer-to-Peer Voice Test</h1>
+    <div id="status">Click Start to begin...</div>
+    
+    <div class="user">
+        <h3>User 1 (You)</h3>
+        <audio id="user1Local" controls autoplay muted></audio>
+        <audio id="user1Remote" controls autoplay></audio>
+        <button onclick="startUser1()">Start User 1</button>
+        <button onclick="connectUser1ToUser2()">Connect to User 2</button>
+    </div>
+    
+    <div class="partner">
+        <h3>User 2 (Partner)</h3>
+        <audio id="user2Local" controls autoplay muted></audio>
+        <audio id="user2Remote" controls autoplay></audio>
+        <button onclick="startUser2()">Start User 2</button>
+        <button onclick="connectUser2ToUser1()">Connect to User 1</button>
+    </div>
+    
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        let socket;
+        let user1Peer;
+        let user2Peer;
+        let user1Stream;
+        let user2Stream;
+        let isUser1 = false;
+        let isUser2 = false;
+        
+        // Simulate two users in same page
+        function startUser1() {
+            if (!isUser1) {
+                navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then(stream => {
+                        document.getElementById('user1Local').srcObject = stream;
+                        user1Stream = stream;
+                        isUser1 = true;
+                        document.getElementById('status').innerHTML = 'User 1 started. Now start User 2 and connect.';
+                    })
+                    .catch(error => {
+                        console.error('User 1 mic error:', error);
+                    });
+            }
+        }
+        
+        function startUser2() {
+            if (!isUser2) {
+                navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then(stream => {
+                        document.getElementById('user2Local').srcObject = stream;
+                        user2Stream = stream;
+                        isUser2 = true;
+                        document.getElementById('status').innerHTML = 'User 2 started. Now connect users.';
+                    })
+                    .catch(error => {
+                        console.error('User 2 mic error:', error);
+                    });
+            }
+        }
+        
+        function connectUser1ToUser2() {
+            if (!user1Peer || !user2Peer) {
+                createPeerConnection('user1', 'user2');
+            }
+        }
+        
+        function connectUser2ToUser1() {
+            if (!user1Peer || !user2Peer) {
+                createPeerConnection('user2', 'user1');
+            }
+        }
+        
+        function createPeerConnection(fromUser, toUser) {
+            console.log(`Creating connection: ${fromUser} -> ${toUser}`);
+            
+            const fromPeer = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            });
+            const toPeer = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            });
+            
+            if (fromUser === 'user1') {
+                user1Peer = fromPeer;
+                user2Peer = toPeer;
+            } else {
+                user1Peer = toPeer;
+                user2Peer = fromPeer;
+            }
+            
+            // Add local streams
+            const fromStream = fromUser === 'user1' ? user1Stream : user2Stream;
+            fromStream.getTracks().forEach(track => {
+                fromPeer.addTrack(track, fromStream);
+            });
+            
+            // Handle remote streams
+            fromPeer.ontrack = (event) => {
+                console.log(`${fromUser} received remote stream`);
+                const remoteAudio = document.getElementById(`${fromUser}Remote`);
+                remoteAudio.srcObject = event.streams[0];
+            };
+            
+            toPeer.ontrack = (event) => {
+                console.log(`${toUser} received remote stream`);
+                const remoteAudio = document.getElementById(`${toUser}Remote`);
+                remoteAudio.srcObject = event.streams[0];
+            };
+            
+            // ICE candidates
+            fromPeer.onicecandidate = (event) => {
+                if (event.candidate) {
+                    // Simulate signaling - in real app, this goes through server
+                    toPeer.addIceCandidate(event.candidate);
+                }
+            };
+            
+            toPeer.onicecandidate = (event) => {
+                if (event.candidate) {
+                    fromPeer.addIceCandidate(event.candidate);
+                }
+            };
+            
+            // Create offer/answer
+            fromPeer.createOffer()
+                .then(offer => {
+                    return fromPeer.setLocalDescription(offer);
+                })
+                .then(() => {
+                    return toPeer.setRemoteDescription(fromPeer.localDescription);
+                })
+                .then(() => {
+                    return toPeer.createAnswer();
+                })
+                .then(answer => {
+                    return toPeer.setLocalDescription(answer);
+                })
+                .then(() => {
+                    return fromPeer.setRemoteDescription(toPeer.localDescription);
+                })
+                .then(() => {
+                    document.getElementById('status').innerHTML = 
+                        `Connected! ${fromUser} can talk to ${toUser}`;
+                })
+                .catch(error => {
+                    console.error('Peer connection error:', error);
+                });
+        }
+    </script>
+</body>
+</html>
