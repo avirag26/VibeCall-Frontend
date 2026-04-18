@@ -373,14 +373,19 @@ export default function VoiceChat() {
             });
           }, 2000);
           
-          // Set up audio analysis for remote stream without interfering with playback
+          // Set up audio analysis and output to speakers
           if (audioContextRef.current && event.streams[0]) {
-            // Clone the remote stream for analysis to avoid interfering with the original
+            // Clone the remote stream for analysis
             const clonedRemoteStream = event.streams[0].clone();
             const remoteSource = audioContextRef.current.createMediaStreamSource(clonedRemoteStream);
             const remoteAnalyser = audioContextRef.current.createAnalyser();
             remoteAnalyser.fftSize = 256;
             remoteSource.connect(remoteAnalyser);
+            
+            // CRITICAL: Connect to speakers!
+            remoteSource.connect(audioContextRef.current.destination);
+            console.log('✅ Connected remote audio to speakers');
+            
             remoteAnalyserRef.current = remoteAnalyser;
             
             // Start detecting partner's audio levels
@@ -603,9 +608,11 @@ export default function VoiceChat() {
           </div>
         </div>
 
-        {/* Audio Elements */}
-        <audio id="remoteAudio" autoPlay playsInline className="hidden" />
-        <audio id="localAudio" autoPlay muted playsInline className="hidden" />
+        {/* Audio Elements - visible for debugging */}
+        <div className="flex justify-center gap-2 mb-4">
+          <audio id="remoteAudio" autoPlay playsInline controls className="h-8 w-48" />
+          <audio id="localAudio" autoPlay muted playsInline className="hidden" />
+        </div>
         
         {/* Visual Indicator */}
         <div className="flex justify-center mb-8">
