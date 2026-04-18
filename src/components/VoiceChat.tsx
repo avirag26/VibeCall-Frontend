@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { io, Socket } from 'socket.io-client';
+import { io } from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
 
 const BACKEND_URL = 'https://vibecall-1-54dc.onrender.com/';
 
@@ -33,20 +34,18 @@ export default function VoiceChat() {
   const [partnerEndedMessage, setPartnerEndedMessage] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // ── Refs (never stale in callbacks) ──────────────────────────────────────
+  // All mutable state lives in refs so socket callbacks never see stale values
   const socketRef = useRef<Socket | null>(null);
   const userIdRef = useRef<string | null>(null);
-  const partnerIdRef = useRef<string | null>(null);          // FIX: ref not state
+  const partnerIdRef = useRef<string | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
-  const iceCandidateBufferRef = useRef<RTCIceCandidateInit[]>([]); // FIX: ref not state
+  const iceCandidateBufferRef = useRef<RTCIceCandidateInit[]>([]);
   const showChatRef = useRef<boolean>(false);
+  const isInCallRef = useRef<boolean>(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const localSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const remoteSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const remoteAnalyserRef = useRef<AnalyserNode | null>(null);
-  const isInCallRef = useRef<boolean>(false);                // FIX: mirror for callbacks
 
   // ── Audio level detection ─────────────────────────────────────────────────
   const detectAudioLevel = (
@@ -81,7 +80,7 @@ export default function VoiceChat() {
     }
   };
 
-  // ── Tear-down (shared by endCall, partner-disconnected, partner-ended) ───
+  // ── Teardown ──────────────────────────────────────────────────────────────
   const teardown = useCallback(() => {
     isInCallRef.current = false;
     setIsInCall(false);
@@ -114,20 +113,7 @@ export default function VoiceChat() {
   }, []);
 
   // ── ICE helpers ───────────────────────────────────────────────────────────
-  const addIceCandidate = async (candidate: RTCIceCandidateInit) => {
-    const pc = peerConnectionRef.current;
-    if (!pc) return;
-    if (pc.remoteDescription) {
-      try { await pc.addIceCandidate(candidate); }
-      catch (e) { console.warn('ICE add error:', e); }
-    } else {
-      iceCandidateBufferRef.current.push(candidate);  // buffer until remote desc set
-    }
-  };
-
-  const flushIceCandidates = async () => {
-    const pc = peerConnectionRef.current;
-    if (!pc) return;
+  const flushIceCandidates = async (pc: RTCPeerConnection) => {
     for (const c of iceCandidateBufferRef.current) {
       try { await pc.addIceCandidate(c); }
       catch (e) { console.warn('Buffered ICE error:', e); }
@@ -135,134 +121,188 @@ export default function VoiceChat() {
     iceCandidateBufferRef.current = [];
   };
 
-  // ── Signalling (reads refs — never stale) ─────────────────────────────────
-  const handleOffer = async (offer: RTCSessionDescriptionInit) => {
+  const addIceCandidate = async (candidate: RTCIceCandidateInit) => {
     const pc = peerConnectionRef.current;
     if (!pc) return;
-    await pc.setRemoteDescription(offer);
-    await flushIceCandidates();
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    socketRef.current?.emit('webrtc-signal', {
-      type: 'answer',
-      payload: answer,
-      targetUserId: partnerIdRef.current,   // FIX: ref, never stale
+    if (pc.remoteDescription) {
+      try { await pc.addIceCandidate(candidate); }
+      catch (e) { console.warn('ICE add error:', e); }
+    } else {
+      iceCandidateBufferRef.current.push(candidate);
+    }
+  };
+
+  // ── Build the RTCPeerConnection (shared setup for both peers) ─────────────
+  const buildPeerConnection = (partnerId: string): RTCPeerConnection => {
+    const pc = new RTCPeerConnection({
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        {
+          urls: 'turn:openrelay.metered.ca:80',
+          username: 'openrelayproject',
+          credential: 'openrelayproject',
+        },
+        {
+          urls: 'turn:openrelay.metered.ca:443',
+          username: 'openrelayproject',
+          credential: 'openrelayproject',
+        },
+        {
+          urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+          username: 'openrelayproject',
+          credential: 'openrelayproject',
+        },
+      ],
     });
+
+    pc.onicecandidate = ({ candidate }) => {
+      if (candidate && socketRef.current) {
+        socketRef.current.emit('webrtc-signal', {
+          type: 'ice-candidate',
+          payload: candidate,
+          targetUserId: partnerIdRef.current,
+        });
+      }
+    };
+
+    pc.onconnectionstatechange = () => console.log('PC state:', pc.connectionState);
+    pc.oniceconnectionstatechange = () => console.log('ICE state:', pc.iceConnectionState);
+
+    pc.ontrack = (event) => {
+      console.log('Remote track received');
+      const remoteAudio = document.getElementById('remoteAudio') as HTMLAudioElement;
+      if (!remoteAudio) return;
+
+      // srcObject is the ONE AND ONLY playback path — never connect to destination
+      remoteAudio.srcObject = event.streams[0];
+      remoteAudio.volume = 1.0;
+      remoteAudio.muted = false;
+
+      const play = () => {
+        const ctx = audioContextRef.current;
+        (ctx?.state === 'suspended' ? ctx.resume() : Promise.resolve())
+          .then(() => remoteAudio.play())
+          .then(() => console.log('Remote audio playing'))
+          .catch((e) => console.warn('play() blocked:', e));
+      };
+      play();
+      remoteAudio.onloadedmetadata = play;
+
+      // Analyser only — no destination connect
+      if (audioContextRef.current) {
+        const src = audioContextRef.current.createMediaStreamSource(event.streams[0]);
+        const analyser = audioContextRef.current.createAnalyser();
+        analyser.fftSize = 256;
+        src.connect(analyser);
+        remoteSourceRef.current = src;
+        detectAudioLevel(analyser, setIsPartnerTalking);
+      }
+    };
+
+    return pc;
   };
 
-  const handleAnswer = async (answer: RTCSessionDescriptionInit) => {
-    const pc = peerConnectionRef.current;
-    if (!pc) return;
-    await pc.setRemoteDescription(answer);
-    await flushIceCandidates();
-  };
-
-  // ── WebRTC init ───────────────────────────────────────────────────────────
-  const initializeWebRTC = async (partnerId: string) => {
+  // ── Caller: gets mic, builds PC, sends offer ──────────────────────────────
+  const startAsCaller = async (partnerId: string) => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       });
       localStreamRef.current = stream;
+      setupLocalAnalyser(stream);
 
-      if (audioContextRef.current) {
-        const src = audioContextRef.current.createMediaStreamSource(stream.clone());
-        const analyser = audioContextRef.current.createAnalyser();
-        analyser.fftSize = 256;
-        src.connect(analyser);
-        localSourceRef.current = src;
-        analyserRef.current = analyser;
-        detectAudioLevel(analyser, setIsUserTalking);
-      }
-
-      const pc = new RTCPeerConnection({
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
-          {
-            urls: 'turn:openrelay.metered.ca:80',
-            username: 'openrelayproject',
-            credential: 'openrelayproject',
-          },
-          {
-            urls: 'turn:openrelay.metered.ca:443',
-            username: 'openrelayproject',
-            credential: 'openrelayproject',
-          },
-          {
-            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-            username: 'openrelayproject',
-            credential: 'openrelayproject',
-          },
-        ],
-      });
+      const pc = buildPeerConnection(partnerId);
       peerConnectionRef.current = pc;
-
       stream.getTracks().forEach((t) => pc.addTrack(t, stream));
-
-      pc.onicecandidate = ({ candidate }) => {
-        if (candidate) {
-          socketRef.current?.emit('webrtc-signal', {
-            type: 'ice-candidate',
-            payload: candidate,
-            targetUserId: partnerIdRef.current,  // FIX: ref
-          });
-        }
-      };
-
-      pc.onconnectionstatechange = () => console.log('PC:', pc.connectionState);
-      pc.oniceconnectionstatechange = () => console.log('ICE:', pc.iceConnectionState);
-
-      pc.ontrack = (event) => {
-        console.log('Remote track received');
-        const remoteAudio = document.getElementById('remoteAudio') as HTMLAudioElement;
-        if (!remoteAudio) return;
-
-        // ONLY playback path — DO NOT also connect to audioContext.destination
-        remoteAudio.srcObject = event.streams[0];
-        remoteAudio.volume = 1.0;
-        remoteAudio.muted = false;
-
-        const play = () => {
-          const ctx = audioContextRef.current;
-          (ctx?.state === 'suspended' ? ctx.resume() : Promise.resolve())
-            .then(() => remoteAudio.play())
-            .then(() => console.log('Remote audio playing'))
-            .catch((e) => console.warn('play() blocked:', e));
-        };
-        play();
-        remoteAudio.onloadedmetadata = play;
-
-        // Analyser only — no destination connect
-        if (audioContextRef.current) {
-          const src = audioContextRef.current.createMediaStreamSource(event.streams[0]);
-          const analyser = audioContextRef.current.createAnalyser();
-          analyser.fftSize = 256;
-          src.connect(analyser);
-          remoteSourceRef.current = src;
-          remoteAnalyserRef.current = analyser;
-          detectAudioLevel(analyser, setIsPartnerTalking);
-        }
-      };
 
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
+      console.log('Caller: sending offer');
       socketRef.current?.emit('webrtc-signal', {
         type: 'offer',
         payload: offer,
         targetUserId: partnerId,
       });
-
     } catch (err: any) {
-      console.error('initializeWebRTC error:', err);
-      setConnectionStatus({ status: 'disconnected', message: `Mic error: ${err?.message}` });
-      if (err?.name === 'NotAllowedError') alert('Microphone access denied. Please allow it in browser settings.');
-      else if (err?.name === 'NotFoundError') alert('No microphone found.');
-      else if (err?.name === 'NotReadableError') alert('Microphone is in use by another app.');
+      handleMicError(err);
     }
   };
 
-  // ── Socket setup (once) ───────────────────────────────────────────────────
+  // ── Callee: gets mic, builds PC, waits for offer ──────────────────────────
+  const startAsCallee = async (partnerId: string) => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
+      localStreamRef.current = stream;
+      setupLocalAnalyser(stream);
+
+      const pc = buildPeerConnection(partnerId);
+      peerConnectionRef.current = pc;
+      stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+      // PC is ready — handleOffer() will do the rest when the offer arrives
+      console.log('Callee: waiting for offer');
+    } catch (err: any) {
+      handleMicError(err);
+    }
+  };
+
+  const setupLocalAnalyser = (stream: MediaStream) => {
+    if (!audioContextRef.current) return;
+    const src = audioContextRef.current.createMediaStreamSource(stream.clone());
+    const analyser = audioContextRef.current.createAnalyser();
+    analyser.fftSize = 256;
+    src.connect(analyser);
+    localSourceRef.current = src;
+    detectAudioLevel(analyser, setIsUserTalking);
+  };
+
+  const handleMicError = (err: any) => {
+    console.error('Mic error:', err);
+    setConnectionStatus({ status: 'disconnected', message: `Mic error: ${err?.message}` });
+    if (err?.name === 'NotAllowedError') alert('Microphone access denied. Please allow it in browser settings.');
+    else if (err?.name === 'NotFoundError') alert('No microphone found.');
+    else if (err?.name === 'NotReadableError') alert('Microphone is in use by another app.');
+  };
+
+  // ── Signalling handlers ───────────────────────────────────────────────────
+  // FIX: handleOffer is for the CALLEE only — it receives the offer,
+  //      creates an answer, and sends it back.
+  const handleOffer = async (offer: RTCSessionDescriptionInit) => {
+    const pc = peerConnectionRef.current;
+    if (!pc) {
+      console.warn('handleOffer: no peer connection yet');
+      return;
+    }
+    console.log('Callee: received offer, creating answer');
+    await pc.setRemoteDescription(offer);
+    await flushIceCandidates(pc);
+
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    socketRef.current?.emit('webrtc-signal', {
+      type: 'answer',
+      payload: answer,
+      targetUserId: partnerIdRef.current,
+    });
+  };
+
+  // FIX: handleAnswer is for the CALLER only — it receives the callee's answer.
+  const handleAnswer = async (answer: RTCSessionDescriptionInit) => {
+    const pc = peerConnectionRef.current;
+    if (!pc) return;
+    // Guard: only set if we're in the right state (have-local-offer)
+    if (pc.signalingState !== 'have-local-offer') {
+      console.warn('handleAnswer: wrong state:', pc.signalingState, '— ignoring');
+      return;
+    }
+    console.log('Caller: received answer');
+    await pc.setRemoteDescription(answer);
+    await flushIceCandidates(pc);
+  };
+
+  // ── Socket setup ──────────────────────────────────────────────────────────
   useEffect(() => {
     const socket = io(BACKEND_URL, { transports: ['websocket'] });
     socketRef.current = socket;
@@ -280,14 +320,24 @@ export default function VoiceChat() {
 
     socket.on('partner-found', ({ partnerId }: { partnerId: string }) => {
       console.log('Partner found:', partnerId);
-      partnerIdRef.current = partnerId;  // FIX: set ref immediately before async work
+      partnerIdRef.current = partnerId;
       isInCallRef.current = true;
       setIsInCall(true);
       setConnectionStatus({ status: 'connected', message: 'Connected! Say hello!' });
-      initializeWebRTC(partnerId);
+
+      // FIX: Determine roles by comparing IDs so exactly ONE peer sends the offer.
+      // The peer with the lexicographically smaller socket ID is the caller.
+      const myId = userIdRef.current ?? '';
+      const isCaller = myId < partnerId;
+      console.log(isCaller ? 'Role: CALLER (sending offer)' : 'Role: CALLEE (waiting for offer)');
+
+      if (isCaller) {
+        startAsCaller(partnerId);
+      } else {
+        startAsCallee(partnerId);
+      }
     });
 
-    // FIX: handler reads peerConnectionRef directly — always current, never stale closure
     socket.on('webrtc-signal', async ({ type, payload }: { type: string; payload: any }) => {
       if (type === 'offer') await handleOffer(payload);
       else if (type === 'answer') await handleAnswer(payload);
@@ -353,7 +403,7 @@ export default function VoiceChat() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
 
-  // ── UI ────────────────────────────────────────────────────────────────────
+  // ── UI ─────────────────────────────────────────────────────────────────────
   const statusColor = {
     connected: 'text-green-400', waiting: 'text-yellow-400',
     connecting: 'text-blue-400', disconnected: 'text-gray-400',
@@ -383,7 +433,7 @@ export default function VoiceChat() {
           <div className="text-white text-lg">{connectionStatus.message}</div>
         </div>
 
-        {/* Hidden audio — no visible controls (avoids autoplay policy) */}
+        {/* Hidden audio — visible controls trigger stricter autoplay policy */}
         <audio id="remoteAudio" autoPlay playsInline className="hidden" />
         <audio id="localAudio" autoPlay muted playsInline className="hidden" />
 
@@ -395,11 +445,14 @@ export default function VoiceChat() {
             )}
             <div className={`w-32 h-32 rounded-full flex items-center justify-center relative overflow-hidden transition-colors duration-300 ${
               isInCall
-                ? isUserTalking ? 'bg-blue-600 shadow-lg shadow-blue-500/50'
-                : isPartnerTalking ? 'bg-green-500 shadow-lg shadow-green-500/50'
-                : 'bg-green-500'
-              : connectionStatus.status === 'waiting' ? 'bg-yellow-500 animate-pulse'
-              : 'bg-gray-600'
+                ? isUserTalking
+                  ? 'bg-blue-600 shadow-lg shadow-blue-500/50'
+                  : isPartnerTalking
+                  ? 'bg-green-500 shadow-lg shadow-green-500/50'
+                  : 'bg-green-500'
+                : connectionStatus.status === 'waiting'
+                ? 'bg-yellow-500 animate-pulse'
+                : 'bg-gray-600'
             }`}>
               {isUserTalking && (
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -416,8 +469,10 @@ export default function VoiceChat() {
                   <div className="w-full h-full rounded-full border-4 border-green-300 animate-pulse" />
                 </div>
               )}
-              <svg className={`w-16 h-16 text-white z-10 ${isUserTalking || isPartnerTalking ? 'animate-bounce' : ''}`}
-                fill="currentColor" viewBox="0 0 20 20">
+              <svg
+                className={`w-16 h-16 text-white z-10 ${isUserTalking || isPartnerTalking ? 'animate-bounce' : ''}`}
+                fill="currentColor" viewBox="0 0 20 20"
+              >
                 <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
               </svg>
             </div>
@@ -436,8 +491,10 @@ export default function VoiceChat() {
 
         {isInCall && (
           <div className="flex justify-center mb-4">
-            <button onClick={() => setShowChat((v) => !v)}
-              className="relative px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-black rounded-full text-sm font-medium transition-colors">
+            <button
+              onClick={() => setShowChat((v) => !v)}
+              className="relative px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-black rounded-full text-sm font-medium transition-colors"
+            >
               {showChat ? 'Hide Chat' : 'Show Chat'}
               {!showChat && unreadCount > 0 && (
                 <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center animate-bounce">
@@ -462,11 +519,13 @@ export default function VoiceChat() {
                 ))}
             </div>
             <div className="flex gap-2">
-              <input type="text" value={messageInput}
+              <input
+                type="text" value={messageInput}
                 onChange={(e) => setMessageInput(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Type a message..."
-                className="flex-1 px-3 py-2 bg-black/50 text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="flex-1 px-3 py-2 bg-black/50 text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
               <button onClick={sendMessage}
                 className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-black rounded-lg text-sm font-medium transition-colors">
                 Send
@@ -479,22 +538,27 @@ export default function VoiceChat() {
           <div className="flex justify-center mb-4">
             <div className="bg-black/30 rounded-lg p-3 flex items-center gap-3">
               <span className="text-white text-sm">Volume:</span>
-              <input type="range" min="0" max="100" defaultValue="100"
+              <input
+                type="range" min="0" max="100" defaultValue="100"
                 onChange={(e) => {
                   const el = document.getElementById('remoteAudio') as HTMLAudioElement;
                   if (el) el.volume = parseInt(e.target.value) / 100;
                 }}
-                className="w-32 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer" />
+                className="w-32 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer"
+              />
             </div>
           </div>
         )}
 
         <div className="flex gap-4 justify-center">
           {!isInCall ? (
-            <button onClick={startChat}
+            <button
+              onClick={startChat}
               disabled={connectionStatus.status === 'waiting' || connectionStatus.status === 'connecting'}
-              className="px-8 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-full font-medium transition-colors">
-              {connectionStatus.status === 'waiting' || connectionStatus.status === 'connecting' ? 'Searching...' : 'Start Chat'}
+              className="px-8 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-full font-medium transition-colors"
+            >
+              {connectionStatus.status === 'waiting' || connectionStatus.status === 'connecting'
+                ? 'Searching...' : 'Start Chat'}
             </button>
           ) : (
             <>
