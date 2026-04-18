@@ -27,62 +27,91 @@ export default function VoiceChat() {
     handleKeyPress,
   } = useVoiceChat();
 
-  const statusColor = {
-    connected: 'text-green-400', waiting: 'text-yellow-400',
-    connecting: 'text-blue-400', disconnected: 'text-gray-400',
-  }[connectionStatus.status];
+  const statusBadge: Record<string, { label: string; color: string; dot: string }> = {
+    connected: { label: 'Connected', color: 'text-emerald-600', dot: 'bg-emerald-500' },
+    waiting: { label: 'Searching', color: 'text-amber-500', dot: 'bg-amber-500' },
+    connecting: { label: 'Connecting', color: 'text-sky-500', dot: 'bg-sky-500' },
+    disconnected: { label: 'Ready', color: 'text-indigo-500', dot: 'bg-indigo-400' },
+  };
 
-  const statusLabel = {
-    connected: 'Connected', waiting: 'Searching',
-    connecting: 'Connecting', disconnected: 'Ready',
-  }[connectionStatus.status];
+  const badge = statusBadge[connectionStatus.status] ?? statusBadge.disconnected;
 
   return (
-    <div className="w-full max-w-md">
+    <div className="w-full max-w-md relative animate-in fade-in zoom-in duration-700">
+
+      {/* --- Partner Ended Toast (Light Theme) --- */}
       {showPartnerEndedNotification && (
-        <div className="fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-pulse">
-          <div className="flex items-center space-x-2">
-            <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+        <div className="fixed top-6 right-6 z-[100] flex items-center gap-3 px-5 py-3 rounded-2xl bg-white/80 backdrop-blur-xl border border-red-100 shadow-2xl shadow-red-200/50 animate-in slide-in-from-right-10">
+          <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="stroke-red-500">
+              <path d="M18 6L6 18M6 6l12 12" strokeWidth="2" strokeLinecap="round" />
             </svg>
-            <span className="font-medium">{partnerEndedMessage}</span>
           </div>
+          <span className="text-sm font-semibold text-slate-700">{partnerEndedMessage}</span>
         </div>
       )}
 
-      <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 shadow-2xl">
-        <div className="text-center mb-6">
-          <div className={`text-sm font-medium ${statusColor} mb-2`}>{statusLabel}</div>
-          <div className="text-white text-lg">{connectionStatus.message}</div>
-        </div>
+      {/* --- Main Card (Glassmorphism) --- */}
+      <div className="relative overflow-hidden rounded-[2.5rem] bg-white/60 backdrop-blur-3xl border border-white shadow-[0_32px_64px_-16px_rgba(0,0,0,0.08)] p-8 transition-all duration-500 hover:shadow-[0_40px_80px_-16px_rgba(0,0,0,0.12)]">
 
-        {/* Hidden audio — visible controls trigger stricter autoplay policy */}
-        <audio id="remoteAudio" autoPlay playsInline className="hidden" />
-        <audio id="localAudio" autoPlay muted playsInline className="hidden" />
+        {/* Top Accent Shine */}
+        <div className="absolute top-0 left-1/4 right-1/4 h-px bg-gradient-to-r from-transparent via-white to-transparent" />
 
-        <VoiceOrb 
-          isUserTalking={isUserTalking}
-          isPartnerTalking={isPartnerTalking}
-          isInCall={isInCall}
-          status={connectionStatus.status}
+        {/* Dynamic Glow Base */}
+        <div
+          className={`absolute -top-20 left-1/2 -translate-x-1/2 w-64 h-64 rounded-full blur-[60px] opacity-20 transition-colors duration-1000 pointer-events-none
+            ${isInCall && isUserTalking ? 'bg-sky-400' : isPartnerTalking ? 'bg-emerald-400' : 'bg-indigo-400'}`}
         />
 
-        {isInCall && (isUserTalking || isPartnerTalking) && (
-          <div className="text-center mb-4 text-sm font-medium">
-            {isUserTalking && <span className="text-blue-400 animate-pulse">You're talking...</span>}
-            {isPartnerTalking && <span className="text-green-400 animate-pulse">Partner is talking...</span>}
+        {/* Status Header */}
+        <div className="flex items-center justify-between mb-8 relative z-10">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/50 border border-white/80 shadow-sm">
+            <span className={`w-2 h-2 rounded-full ${badge.dot} shadow-sm ${(connectionStatus.status === 'waiting' || connectionStatus.status === 'connecting') ? 'animate-pulse' : ''
+              }`} />
+            <span className={`text-[10px] font-black uppercase tracking-widest ${badge.color}`}>
+              {badge.label}
+            </span>
           </div>
-        )}
 
+
+        </div>
+
+        {/* Connection Message */}
+        <p className="text-center text-slate-500 text-sm font-medium mb-6 animate-pulse italic">
+          {connectionStatus.message}
+        </p>
+
+        {/* Hidden Audio */}
+        <audio id="remoteAudio" autoPlay playsInline />
+        <audio id="localAudio" autoPlay muted playsInline />
+
+        {/* The Orb Component */}
+        <div className="flex justify-center my-4 transform transition-transform hover:scale-105 duration-500">
+          <VoiceOrb
+            isUserTalking={isUserTalking}
+            isPartnerTalking={isPartnerTalking}
+            isInCall={isInCall}
+            status={connectionStatus.status}
+          />
+        </div>
+
+        {/* Chat Toggle */}
         {isInCall && (
-          <div className="flex justify-center mb-4">
+          <div className="flex justify-center mb-6">
             <button
               onClick={() => setShowChat(!showChat)}
-              className="relative px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-black rounded-full text-sm font-medium transition-colors"
+              className={`relative flex items-center gap-2 px-6 py-2 rounded-full text-xs font-bold transition-all duration-300 shadow-sm
+                ${showChat
+                  ? 'bg-indigo-500 text-white shadow-indigo-200 shadow-lg'
+                  : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-100'}`}
             >
-              {showChat ? 'Hide Chat' : 'Show Chat'}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="stroke-current">
+                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              {showChat ? 'Close Chat' : 'Open Messenger'}
+
               {!showChat && unreadCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center animate-bounce">
+                <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] text-white animate-bounce shadow-lg border-2 border-white">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
@@ -90,46 +119,52 @@ export default function VoiceChat() {
           </div>
         )}
 
+        {/* Chat Interface */}
         {showChat && isInCall && (
-          <ChatBox 
-            messages={messages}
-            messageInput={messageInput}
-            setMessageInput={setMessageInput}
-            sendMessage={sendMessage}
-            handleKeyPress={handleKeyPress as any}
-          />
+          <div className="mb-6 animate-in slide-in-from-bottom-4 duration-300">
+            <ChatBox
+              messages={messages}
+              messageInput={messageInput}
+              setMessageInput={setMessageInput}
+              sendMessage={sendMessage}
+              handleKeyPress={handleKeyPress as any}
+            />
+          </div>
         )}
 
+        {/* Volume Slider */}
         {isInCall && (
-          <div className="flex justify-center mb-4">
-            <div className="bg-black/30 rounded-lg p-3 flex items-center gap-3">
-              <span className="text-white text-sm">Volume:</span>
-              <input
-                type="range" min="0" max="100" defaultValue="100"
-                onChange={(e) => {
-                  const el = document.getElementById('remoteAudio') as HTMLAudioElement;
-                  if (el) el.volume = parseInt(e.target.value) / 100;
-                }}
-                className="w-32 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer"
-              />
-            </div>
+          <div className="flex justify-center items-center gap-3 mb-8 bg-slate-50/50 p-3 rounded-2xl border border-slate-100">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="stroke-slate-400">
+              <path d="M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 010 7.07" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            <input
+              type="range"
+              min="0" max="100"
+              defaultValue="100"
+              onChange={e => {
+                const el = document.getElementById('remoteAudio') as HTMLAudioElement;
+                if (el) el.volume = parseInt(e.target.value) / 100;
+              }}
+              className="w-full h-1.5 accent-indigo-500 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+            />
           </div>
         )}
 
-        <ActionButtons 
-          isInCall={isInCall}
-          status={connectionStatus.status}
-          startChat={startChat}
-          endCall={endCall}
-          nextPartner={nextPartner}
-        />
-
-        {userId && (
-          <div className="text-center mt-6 text-gray-400 text-sm">
-            Your ID: {userId.slice(0, 8)}...
-          </div>
-        )}
+        {/* Controls */}
+        <div className="relative z-10">
+          <ActionButtons
+            isInCall={isInCall}
+            status={connectionStatus.status}
+            startChat={startChat}
+            endCall={endCall}
+            nextPartner={nextPartner}
+          />
+        </div>
       </div>
+
+      {/* Floating Shadow for the whole card */}
+      <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-[80%] h-4 bg-slate-900/5 blur-2xl rounded-full" />
     </div>
   );
 }
