@@ -20,11 +20,14 @@ export default function VoiceChat() {
     unreadCount,
     messageInput,
     setMessageInput,
+    isMuted,
     startChat,
+    stopSearching,
     endCall,
     nextPartner,
     sendMessage,
     handleKeyPress,
+    toggleMute,
   } = useVoiceChat();
 
   const statusBadge: Record<string, { label: string; color: string; dot: string }> = {
@@ -157,8 +160,11 @@ export default function VoiceChat() {
             isInCall={isInCall}
             status={connectionStatus.status}
             startChat={startChat}
+            stopSearching={stopSearching}
             endCall={endCall}
             nextPartner={nextPartner}
+            isMuted={isMuted}
+            toggleMute={toggleMute}
           />
         </div>
       </div>

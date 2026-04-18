@@ -20,6 +20,7 @@ export function useVoiceChat() {
   const [showPartnerEndedNotification, setShowPartnerEndedNotification] = useState(false);
   const [partnerEndedMessage, setPartnerEndedMessage] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
 
   // All mutable state lives in refs so socket callbacks never see stale values
   const socketRef = useRef<Socket | null>(null);
@@ -78,6 +79,7 @@ export function useVoiceChat() {
     setUnreadCount(0);
     setIsUserTalking(false);
     setIsPartnerTalking(false);
+    setIsMuted(false);
 
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     localStreamRef.current = null;
@@ -361,6 +363,11 @@ export function useVoiceChat() {
     socketRef.current?.emit('find-partner');
   };
 
+  const stopSearching = () => {
+    socketRef.current?.emit('stop-searching');
+    setConnectionStatus({ status: 'disconnected', message: 'Click Start to find someone to talk to' });
+  };
+
   const endCall = () => {
     socketRef.current?.emit('end-call');
     teardown();
@@ -385,6 +392,16 @@ export function useVoiceChat() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
 
+  const toggleMute = () => {
+    const stream = localStreamRef.current;
+    if (stream) {
+      const audioTracks = stream.getAudioTracks();
+      const currentMuted = !audioTracks[0]?.enabled; // if enabled is false, it means it's muted
+      audioTracks.forEach(track => track.enabled = currentMuted);
+      setIsMuted(!currentMuted);
+    }
+  };
+
   return {
     connectionStatus,
     isInCall,
@@ -399,10 +416,13 @@ export function useVoiceChat() {
     unreadCount,
     messageInput,
     setMessageInput,
+    isMuted,
     startChat,
+    stopSearching,
     endCall,
     nextPartner,
     sendMessage,
     handleKeyPress,
+    toggleMute,
   };
 }

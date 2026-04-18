@@ -4,16 +4,22 @@ export interface ActionButtonsProps {
   isInCall: boolean;
   status: string;
   startChat: () => void;
+  stopSearching: () => void;
   endCall: () => void;
   nextPartner: () => void;
+  isMuted: boolean;
+  toggleMute: () => void;
 }
 
 export default function ActionButtons({
   isInCall,
   status,
   startChat,
+  stopSearching,
   endCall,
   nextPartner,
+  isMuted,
+  toggleMute,
 }: ActionButtonsProps) {
   const isSearching = status === 'waiting' || status === 'connecting';
 
@@ -21,24 +27,23 @@ export default function ActionButtons({
     <div className="flex gap-3 justify-center">
       {!isInCall ? (
         <button
-          onClick={startChat}
-          disabled={isSearching}
+          onClick={isSearching ? stopSearching : startChat}
           style={{
             background: isSearching
-              ? 'rgba(99,102,241,0.3)'
+              ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
               : 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
             border: isSearching
-              ? '1px solid rgba(99,102,241,0.4)'
+              ? '1px solid rgba(252,165,165,0.3)'
               : '1px solid rgba(129,140,248,0.5)',
-            boxShadow: isSearching ? 'none' : '0 4px 20px rgba(99,102,241,0.35)',
+            boxShadow: isSearching ? '0 4px 20px rgba(239,68,68,0.35)' : '0 4px 20px rgba(99,102,241,0.35)',
             transition: 'all 0.3s ease',
             borderRadius: '9999px',
             padding: '12px 36px',
-            color: isSearching ? 'rgba(255,255,255,0.4)' : 'white',
+            color: 'white',
             fontWeight: 600,
             fontSize: '0.875rem',
             letterSpacing: '0.05em',
-            cursor: isSearching ? 'not-allowed' : 'pointer',
+            cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
@@ -48,22 +53,10 @@ export default function ActionButtons({
         >
           {isSearching ? (
             <>
-              {/* Animated shimmer on disabled state */}
-              <span
-                style={{
-                  position: 'absolute', inset: 0,
-                  background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)',
-                  animation: 'shimmer 1.8s infinite',
-                }}
-              />
-              <svg
-                width="16" height="16" viewBox="0 0 24 24" fill="none"
-                style={{ animation: 'spin 1.2s linear infinite', flexShrink: 0 }}
-              >
-                <circle cx="12" cy="12" r="9" stroke="rgba(255,255,255,0.4)" strokeWidth="2" />
-                <path d="M12 3a9 9 0 019 9" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" />
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <rect x="6" y="6" width="12" height="12" rx="2" fill="white" fillOpacity="0.9" />
               </svg>
-              Searching...
+              Stop Searching
             </>
           ) : (
             <>
@@ -77,6 +70,51 @@ export default function ActionButtons({
         </button>
       ) : (
         <>
+          {/* Mute button */}
+          <button
+            onClick={toggleMute}
+            style={{
+              background: isMuted ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' : 'linear-gradient(135deg, rgba(99,102,241,0.15) 0%, rgba(79,70,229,0.15) 100%)',
+              border: isMuted ? '1px solid rgba(251,191,36,0.5)' : '1px solid rgba(99,102,241,0.4)',
+              boxShadow: isMuted ? '0 4px 16px rgba(245,158,11,0.3)' : '0 4px 16px rgba(99,102,241,0.15)',
+              borderRadius: '9999px',
+              padding: '12px 24px',
+              color: isMuted ? 'white' : '#6366f1',
+              fontWeight: 600,
+              fontSize: '0.875rem',
+              letterSpacing: '0.05em',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '7px',
+              transition: 'all 0.2s ease',
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLButtonElement).style.transform = 'none';
+            }}
+          >
+            {isMuted ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+                <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path>
+                <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+            )}
+            {isMuted ? 'Unmute' : 'Mute'}
+          </button>
+
           {/* End Call button */}
           <button
             onClick={endCall}
