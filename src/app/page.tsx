@@ -1,7 +1,3 @@
-'use client';
-
-import { useState, useEffect, useRef } from 'react';
-import { io, Socket } from 'socket.io-client';
 import VoiceChat from '@/components/VoiceChat';
 
 export default function Home() {
