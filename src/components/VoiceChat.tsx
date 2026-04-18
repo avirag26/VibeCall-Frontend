@@ -313,49 +313,65 @@ export default function VoiceChat() {
       peerConnection.ontrack = (event) => {
         console.log('Received remote stream:', event.streams[0]);
         console.log('Remote stream tracks:', event.streams[0].getTracks());
-        event.streams[0].getTracks().forEach((track, index) => {
-          console.log(`Remote track ${index}:`, track.kind, track.label, track.enabled);
-        });
+        
+        const remoteTrack = event.streams[0].getAudioTracks()[0];
+        if (remoteTrack) {
+          console.log('Remote track:', remoteTrack.kind, remoteTrack.label, 'enabled:', remoteTrack.enabled, 'muted:', remoteTrack.muted);
+          
+          // Listen for track unmute event (track starts with actual audio)
+          remoteTrack.onunmute = () => {
+            console.log('✅ Remote track unmuted - audio data flowing!');
+          };
+          
+          // Listen for track mute event
+          remoteTrack.onmute = () => {
+            console.log('⚠️ Remote track muted');
+          };
+        }
         
         const remoteAudio = document.getElementById('remoteAudio') as HTMLAudioElement;
         if (remoteAudio) {
           console.log('Setting remote audio srcObject');
           remoteAudio.srcObject = event.streams[0];
-          remoteAudio.volume = 1.0; // Ensure full volume
-          remoteAudio.muted = false; // Ensure not muted
+          remoteAudio.volume = 1.0;
+          remoteAudio.muted = false;
           
-          // Resume audio context if suspended (browser requirement)
+          // Resume audio context if suspended
           if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
             audioContextRef.current.resume().then(() => {
               console.log('Audio context resumed');
             });
           }
           
-          // Play with retry logic
-          const playAudio = async () => {
-            try {
-              await remoteAudio.play();
-              console.log('✅ Remote audio playing successfully');
-            } catch (e) {
+          // Wait for loadedmetadata before playing
+          remoteAudio.onloadedmetadata = () => {
+            console.log('✅ Audio metadata loaded, duration:', remoteAudio.duration);
+            remoteAudio.play().then(() => {
+              console.log('✅ Remote audio playing after metadata');
+            }).catch((e) => {
               console.log('❌ Audio play error:', e);
-              // Retry after user interaction
-              const retryPlay = () => {
-                remoteAudio.play().catch(err => console.log('Retry failed:', err));
-                document.removeEventListener('click', retryPlay);
-              };
-              document.addEventListener('click', retryPlay, { once: true });
-            }
+            });
           };
-          playAudio();
           
-          // Test if audio element is actually playing
+          // Fallback: try playing anyway after a short delay
           setTimeout(() => {
-            console.log('Remote audio element state:', {
+            if (remoteAudio.paused) {
+              console.log('Trying to play after delay...');
+              remoteAudio.play().catch(err => console.log('Delayed play failed:', err));
+            }
+          }, 500);
+          
+          // Monitor audio playback
+          setTimeout(() => {
+            console.log('Remote audio state:', {
               paused: remoteAudio.paused,
               currentTime: remoteAudio.currentTime,
-              readyState: remoteAudio.readyState
+              duration: remoteAudio.duration,
+              readyState: remoteAudio.readyState,
+              volume: remoteAudio.volume,
+              muted: remoteAudio.muted
             });
-          }, 1000);
+          }, 2000);
           
           // Set up audio analysis for remote stream without interfering with playback
           if (audioContextRef.current && event.streams[0]) {
