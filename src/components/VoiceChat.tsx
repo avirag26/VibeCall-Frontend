@@ -722,6 +722,42 @@ export default function VoiceChat() {
           </div>
         )}
 
+        {/* Audio Volume Control (show when in call) */}
+        {isInCall && (
+          <div className="flex justify-center mb-4">
+            <div className="bg-black/30 rounded-lg p-3 flex items-center gap-3">
+              <span className="text-white text-sm">Volume:</span>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                defaultValue="100"
+                onChange={(e) => {
+                  const remoteAudio = document.getElementById('remoteAudio') as HTMLAudioElement;
+                  if (remoteAudio) {
+                    remoteAudio.volume = parseInt(e.target.value) / 100;
+                    console.log('Volume set to:', remoteAudio.volume);
+                  }
+                }}
+                className="w-32 h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer"
+              />
+              <button
+                onClick={() => {
+                  const remoteAudio = document.getElementById('remoteAudio') as HTMLAudioElement;
+                  if (remoteAudio) {
+                    remoteAudio.muted = !remoteAudio.muted;
+                    console.log('Audio muted:', remoteAudio.muted);
+                    alert(remoteAudio.muted ? 'Audio Muted' : 'Audio Unmuted');
+                  }
+                }}
+                className="px-3 py-1 bg-yellow-600 hover:bg-yellow-700 text-white text-xs rounded-full"
+              >
+                Test Mute
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Control Buttons */}
         <div className="flex gap-4 justify-center">
           {!isInCall ? (
