@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Gender, Country, CombinedFilters } from '../types/chat';
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://vibecall-backend-t5we.onrender.com';
 
 const COUNTRIES = [
   'Afghanistan', 'Albania', 'Algeria', 'Argentina', 'Armenia', 'Australia',
@@ -34,12 +36,35 @@ export default function FilterWizard({ initialData, onComplete }: FilterWizardPr
   const [myCountry, setMyCountry] = useState<Country>(initialData?.myCountry || '');
   const [targetGender, setTargetGender] = useState<Gender>(initialData?.targetGender || 'random');
   const [targetCountry, setTargetCountry] = useState<Country>(initialData?.targetCountry || 'random');
+  const [stats, setStats] = useState<Record<string, number>>({});
+  const [totalUsers, setTotalUsers] = useState<number>(0);
+
+  useEffect(() => {
+    fetch(`${BACKEND_URL}/stats`)
+      .then((res) => res.json())
+      .then((data) => {
+        setStats(data.counts || {});
+        setTotalUsers(data.totalUsers || 0);
+      })
+      .catch((err) => console.error('Failed to fetch country stats:', err));
+  }, []);
 
   const selectStyle = `w-full bg-white border border-slate-100 shadow-sm rounded-2xl p-4 text-slate-700
     font-bold focus:ring-4 focus:ring-sky-100 outline-none transition-all appearance-none cursor-pointer`;
 
   return (
-    <div className="w-full flex flex-col items-center px-4 py-8">
+    <div className="w-full flex flex-col items-center px-4 py-8 relative">
+
+      {/* Total users ping */}
+      <div className="absolute top-4 left-6 flex items-center gap-2">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+        </span>
+        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600/80">
+          {totalUsers} Online
+        </span>
+      </div>
 
       {/* Step indicator */}
       <div className="flex items-center gap-2 mb-8">
@@ -96,7 +121,7 @@ export default function FilterWizard({ initialData, onComplete }: FilterWizardPr
               >
                 <option value="" disabled>Select your country</option>
                 {COUNTRIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
+                  <option key={c} value={c}>{c}{stats[c] ? ` 🟢 ${stats[c]} online` : ''}</option>
                 ))}
               </select>
               <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-xs">
@@ -135,7 +160,7 @@ export default function FilterWizard({ initialData, onComplete }: FilterWizardPr
                 [
                   { val: 'male' as Gender, label: '♂ Male', active: 'bg-indigo-500 shadow-indigo-200' },
                   { val: 'female' as Gender, label: '♀ Female', active: 'bg-pink-500 shadow-pink-200' },
-                  { val: 'random' as Gender, label: '✦ Anyone', active: 'bg-amber-500 shadow-amber-200' },
+                  { val: 'random' as Gender, label: 'Anyone', active: 'bg-amber-500 shadow-amber-200' },
                 ] as { val: Gender; label: string; active: string }[]
               ).map(({ val, label, active }) => (
                 <button
@@ -166,7 +191,7 @@ export default function FilterWizard({ initialData, onComplete }: FilterWizardPr
                 <option value="random">🌍 Any Country</option>
                 <option disabled>──────────────</option>
                 {COUNTRIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
+                  <option key={c} value={c}>{c}{stats[c] ? ` 🟢 ${stats[c]} online` : ''}</option>
                 ))}
               </select>
               <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-xs">

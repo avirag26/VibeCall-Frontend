@@ -154,12 +154,12 @@ export default function ActionButtons({
           <button
             onClick={nextPartner}
             style={{
-              background: 'linear-gradient(135deg, rgba(251,191,36,0.15) 0%, rgba(245,158,11,0.15) 100%)',
-              border: '1px solid rgba(251,191,36,0.4)',
-              boxShadow: '0 4px 16px rgba(251,191,36,0.15)',
+              background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+              border: '1px solid rgba(251,191,36,0.8)',
+              boxShadow: '0 4px 16px rgba(245,158,11,0.4)',
               borderRadius: '9999px',
               padding: '12px 28px',
-              color: '#fde68a',
+              color: 'white',
               fontWeight: 600,
               fontSize: '0.875rem',
               letterSpacing: '0.05em',
@@ -168,19 +168,22 @@ export default function ActionButtons({
               alignItems: 'center',
               gap: '7px',
               transition: 'all 0.2s ease',
+              textShadow: '0 1px 2px rgba(0,0,0,0.1)',
             }}
             onMouseEnter={e => {
-              (e.currentTarget as HTMLButtonElement).style.background = 'linear-gradient(135deg, rgba(251,191,36,0.25) 0%, rgba(245,158,11,0.25) 100%)';
+              (e.currentTarget as HTMLButtonElement).style.background = 'linear-gradient(135deg, #fcd34d 0%, #fbbf24 100%)';
               (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)';
+              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(245,158,11,0.5)';
             }}
             onMouseLeave={e => {
-              (e.currentTarget as HTMLButtonElement).style.background = 'linear-gradient(135deg, rgba(251,191,36,0.15) 0%, rgba(245,158,11,0.15) 100%)';
+              (e.currentTarget as HTMLButtonElement).style.background = 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)';
               (e.currentTarget as HTMLButtonElement).style.transform = 'none';
+              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 16px rgba(245,158,11,0.4)';
             }}
           >
             {/* Skip / shuffle icon */}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M16 4l4 4-4 4V9H8.5C7.1 9 6 10.1 6 11.5S7.1 14 8.5 14H9v2H8.5C6 16 4 14 4 11.5S6 7 8.5 7H16V4zM8 16l-4-4 4-4v2.5h7.5c1.4 0 2.5 1.1 2.5 2.5S16.9 16 15.5 16H8z" fill="#fde68a" />
+              <path d="M16 4l4 4-4 4V9H8.5C7.1 9 6 10.1 6 11.5S7.1 14 8.5 14H9v2H8.5C6 16 4 14 4 11.5S6 7 8.5 7H16V4zM8 16l-4-4 4-4v2.5h7.5c1.4 0 2.5 1.1 2.5 2.5S16.9 16 15.5 16H8z" fill="white" />
             </svg>
             Next
           </button>
