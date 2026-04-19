@@ -24,15 +24,16 @@ const COUNTRIES = [
 ];
 
 interface FilterWizardProps {
+  initialData?: CombinedFilters | null;
   onComplete: (filters: CombinedFilters) => void;
 }
 
-export default function FilterWizard({ onComplete }: FilterWizardProps) {
-  const [step, setStep] = useState<'my-profile' | 'preferences'>('my-profile');
-  const [myGender, setMyGender] = useState<Gender>('');
-  const [myCountry, setMyCountry] = useState<Country>('');
-  const [targetGender, setTargetGender] = useState<Gender>('random');
-  const [targetCountry, setTargetCountry] = useState<Country>('random');
+export default function FilterWizard({ initialData, onComplete }: FilterWizardProps) {
+  const [step, setStep] = useState<'my-profile' | 'preferences'>(initialData ? 'preferences' : 'my-profile');
+  const [myGender, setMyGender] = useState<Gender>(initialData?.myGender || '');
+  const [myCountry, setMyCountry] = useState<Country>(initialData?.myCountry || '');
+  const [targetGender, setTargetGender] = useState<Gender>(initialData?.targetGender || 'random');
+  const [targetCountry, setTargetCountry] = useState<Country>(initialData?.targetCountry || 'random');
 
   const selectStyle = `w-full bg-white border border-slate-100 shadow-sm rounded-2xl p-4 text-slate-700
     font-bold focus:ring-4 focus:ring-sky-100 outline-none transition-all appearance-none cursor-pointer`;
@@ -188,7 +189,7 @@ export default function FilterWizard({ onComplete }: FilterWizardProps) {
                 text-white font-black tracking-widest uppercase text-sm shadow-xl shadow-teal-200/50
                 transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
-              Start Chat ✦
+              Start Chat
             </button>
           </div>
         </div>

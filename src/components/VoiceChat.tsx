@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { useVoiceChat } from '../hooks/useVoiceChat';
 import VoiceOrb from './VoiceOrb';
 import ChatBox from './ChatBox';
@@ -34,6 +35,11 @@ export default function VoiceChat({ filters, onGoBack }: VoiceChatProps) {
     handleKeyPress,
     toggleMute,
   } = useVoiceChat(filters);
+
+  useEffect(() => {
+    startChat();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const statusBadge: Record<string, { label: string; color: string; dot: string }> = {
     connected: { label: 'Connected', color: 'text-emerald-600', dot: 'bg-emerald-500' },
@@ -108,19 +114,6 @@ export default function VoiceChat({ filters, onGoBack }: VoiceChatProps) {
                     : filters.myCountry}
                 </span>
               </div>
-            )}
-
-            {/* Back / change filters button — only when not in a live call */}
-            {!isInCall && (
-              <button
-                onClick={onGoBack}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/50
-                  border border-white/80 shadow-sm text-[10px] font-black uppercase
-                  tracking-widest text-slate-500 hover:bg-white/80 hover:text-slate-700
-                  transition-all duration-200"
-              >
-                ← Filters
-              </button>
             )}
           </div>
         </div>
@@ -211,7 +204,7 @@ export default function VoiceChat({ filters, onGoBack }: VoiceChatProps) {
         )}
 
         {/* Action Buttons */}
-        <div className="relative z-10">
+        <div className="relative z-10 flex flex-col items-center gap-4">
           <ActionButtons
             isInCall={isInCall}
             status={connectionStatus.status}
@@ -222,6 +215,14 @@ export default function VoiceChat({ filters, onGoBack }: VoiceChatProps) {
             isMuted={isMuted}
             toggleMute={toggleMute}
           />
+          {!isInCall && (
+            <button
+              onClick={onGoBack}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest text-slate-500 border border-slate-200 hover:bg-slate-50 hover:text-slate-700 transition-all duration-200 shadow-sm active:scale-[0.98]"
+            >
+              ← Change Preferences
+            </button>
+          )}
         </div>
       </div>
 

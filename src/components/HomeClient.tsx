@@ -7,7 +7,12 @@ import { CombinedFilters } from '@/types/chat';
 
 export default function HomeClient() {
     const [filters, setFilters] = useState<CombinedFilters | null>(null);
+    const [savedFilters, setSavedFilters] = useState<CombinedFilters | null>(null);
 
+    const handleComplete = (f: CombinedFilters) => {
+        setSavedFilters(f);
+        setFilters(f);
+    };
     return (
         <main className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-slate-50">
             {/* Animated background blobs */}
@@ -35,7 +40,7 @@ export default function HomeClient() {
 
                 <div className="w-full max-w-md bg-white/40 backdrop-blur-2xl rounded-[2.5rem] border border-white shadow-[0_20px_50px_rgba(0,0,0,0.05)] p-2">
                     {!filters ? (
-                        <FilterWizard onComplete={setFilters} />
+                        <FilterWizard initialData={savedFilters} onComplete={handleComplete} />
                     ) : (
                         <VoiceChat filters={filters} onGoBack={() => setFilters(null)} />
                     )}
