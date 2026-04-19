@@ -46,7 +46,7 @@ export default function FilterWizard({ initialData, onComplete }: FilterWizardPr
         setStats(data.counts || {});
         setTotalUsers(data.totalUsers || 0);
       })
-      .catch((err) => console.error('Failed to fetch country stats:', err));
+      .catch((err) => console.error('Failed to fetch country status:', err));
   }, []);
 
   const selectStyle = `w-full bg-white border border-slate-100 shadow-sm rounded-2xl p-4 text-slate-700
@@ -90,8 +90,8 @@ export default function FilterWizard({ initialData, onComplete }: FilterWizardPr
               <button
                 onClick={() => setMyGender('male')}
                 className={`flex-1 py-4 rounded-2xl font-black text-base transition-all duration-200 ${myGender === 'male'
-                    ? 'bg-indigo-500 text-white shadow-xl shadow-indigo-200 -translate-y-0.5'
-                    : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-100 shadow-sm'
+                  ? 'bg-indigo-500 text-white shadow-xl shadow-indigo-200 -translate-y-0.5'
+                  : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-100 shadow-sm'
                   }`}
               >
                 ♂ Male
@@ -99,8 +99,8 @@ export default function FilterWizard({ initialData, onComplete }: FilterWizardPr
               <button
                 onClick={() => setMyGender('female')}
                 className={`flex-1 py-4 rounded-2xl font-black text-base transition-all duration-200 ${myGender === 'female'
-                    ? 'bg-pink-500 text-white shadow-xl shadow-pink-200 -translate-y-0.5'
-                    : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-100 shadow-sm'
+                  ? 'bg-pink-500 text-white shadow-xl shadow-pink-200 -translate-y-0.5'
+                  : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-100 shadow-sm'
                   }`}
               >
                 ♀ Female
@@ -167,8 +167,8 @@ export default function FilterWizard({ initialData, onComplete }: FilterWizardPr
                   key={val}
                   onClick={() => setTargetGender(val)}
                   className={`flex-1 py-3 rounded-2xl text-sm font-bold transition-all duration-200 ${targetGender === val
-                      ? `${active} text-white shadow-lg -translate-y-0.5`
-                      : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-100 shadow-sm'
+                    ? `${active} text-white shadow-lg -translate-y-0.5`
+                    : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-100 shadow-sm'
                     }`}
                 >
                   {label}
