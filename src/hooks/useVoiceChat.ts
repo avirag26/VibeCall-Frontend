@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import type { Socket } from 'socket.io-client';
-import { ConnectionStatus, ChatMessage } from '../types/chat';
+import { ConnectionStatus, ChatMessage, CombinedFilters } from '../types/chat';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://vibecall-backend-t5we.onrender.com';
+const BACKEND_URL =
+  process.env.NEXT_PUBLIC_BACKEND_URL || 'https://vibecall-backend-t5we.onrender.com';
 
-export function useVoiceChat() {
+export function useVoiceChat(filters: CombinedFilters) {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
     status: 'disconnected',
     message: 'Click Start to find someone to talk to',
@@ -22,7 +23,6 @@ export function useVoiceChat() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
 
-  // All mutable state lives in refs so socket callbacks never see stale values
   const socketRef = useRef<Socket | null>(null);
   const userIdRef = useRef<string | null>(null);
   const partnerIdRef = useRef<string | null>(null);
@@ -121,7 +121,7 @@ export function useVoiceChat() {
     }
   };
 
-  // ── Build the RTCPeerConnection (shared setup for both peers) ─────────────
+  // ── Build RTCPeerConnection ───────────────────────────────────────────────
   const buildPeerConnection = (partnerId: string): RTCPeerConnection => {
     const pc = new RTCPeerConnection({
       iceServers: [
@@ -155,15 +155,16 @@ export function useVoiceChat() {
       }
     };
 
-    pc.onconnectionstatechange = () => console.log('PC state:', pc.connectionState);
-    pc.oniceconnectionstatechange = () => console.log('ICE state:', pc.iceConnectionState);
+    pc.onconnectionstatechange = () =>
+      console.log('PC state:', pc.connectionState);
+    pc.oniceconnectionstatechange = () =>
+      console.log('ICE state:', pc.iceConnectionState);
 
     pc.ontrack = (event) => {
       console.log('Remote track received');
       const remoteAudio = document.getElementById('remoteAudio') as HTMLAudioElement;
       if (!remoteAudio) return;
 
-      // srcObject is the ONE AND ONLY playback path — never connect to destination
       remoteAudio.srcObject = event.streams[0];
       remoteAudio.volume = 1.0;
       remoteAudio.muted = false;
@@ -178,7 +179,6 @@ export function useVoiceChat() {
       play();
       remoteAudio.onloadedmetadata = play;
 
-      // Analyser only — no destination connect
       if (audioContextRef.current) {
         const src = audioContextRef.current.createMediaStreamSource(event.streams[0]);
         const analyser = audioContextRef.current.createAnalyser();
@@ -192,8 +192,9 @@ export function useVoiceChat() {
     return pc;
   };
 
-  // ── Caller: gets mic, builds PC, sends offer ──────────────────────────────
+  // ── Caller ────────────────────────────────────────────────────────────────
   const startAsCaller = async (partnerId: string) => {
+    ensureAudioContext();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
@@ -218,8 +219,9 @@ export function useVoiceChat() {
     }
   };
 
-  // ── Callee: gets mic, builds PC, waits for offer ──────────────────────────
+  // ── Callee ────────────────────────────────────────────────────────────────
   const startAsCallee = async (partnerId: string) => {
+    ensureAudioContext();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
@@ -230,7 +232,6 @@ export function useVoiceChat() {
       const pc = buildPeerConnection(partnerId);
       peerConnectionRef.current = pc;
       stream.getTracks().forEach((t) => pc.addTrack(t, stream));
-      // PC is ready — handleOffer() will do the rest when the offer arrives
       console.log('Callee: waiting for offer');
     } catch (err: any) {
       handleMicError(err);
@@ -250,22 +251,21 @@ export function useVoiceChat() {
   const handleMicError = (err: any) => {
     console.error('Mic error:', err);
     setConnectionStatus({ status: 'disconnected', message: `Mic error: ${err?.message}` });
-    if (err?.name === 'NotAllowedError') alert('Microphone access denied. Please allow it in browser settings.');
-    else if (err?.name === 'NotFoundError') alert('No microphone found.');
-    else if (err?.name === 'NotReadableError') alert('Microphone is in use by another app.');
+    if (err?.name === 'NotAllowedError')
+      alert('Microphone access denied. Please allow it in browser settings.');
+    else if (err?.name === 'NotFoundError')
+      alert('No microphone found.');
+    else if (err?.name === 'NotReadableError')
+      alert('Microphone is in use by another app.');
   };
 
-  // ── Signalling handlers ───────────────────────────────────────────────────
+  // ── Signalling ────────────────────────────────────────────────────────────
   const handleOffer = async (offer: RTCSessionDescriptionInit) => {
     const pc = peerConnectionRef.current;
-    if (!pc) {
-      console.warn('handleOffer: no peer connection yet');
-      return;
-    }
+    if (!pc) { console.warn('handleOffer: no peer connection yet'); return; }
     console.log('Callee: received offer, creating answer');
     await pc.setRemoteDescription(offer);
     await flushIceCandidates(pc);
-
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
     socketRef.current?.emit('webrtc-signal', {
@@ -278,7 +278,6 @@ export function useVoiceChat() {
   const handleAnswer = async (answer: RTCSessionDescriptionInit) => {
     const pc = peerConnectionRef.current;
     if (!pc) return;
-    // Guard: only set if we're in the right state (have-local-offer)
     if (pc.signalingState !== 'have-local-offer') {
       console.warn('handleAnswer: wrong state:', pc.signalingState, '— ignoring');
       return;
@@ -313,13 +312,10 @@ export function useVoiceChat() {
 
       const myId = userIdRef.current ?? '';
       const isCaller = myId < partnerId;
-      console.log(isCaller ? 'Role: CALLER (sending offer)' : 'Role: CALLEE (waiting for offer)');
+      console.log(isCaller ? 'Role: CALLER' : 'Role: CALLEE');
 
-      if (isCaller) {
-        startAsCaller(partnerId);
-      } else {
-        startAsCallee(partnerId);
-      }
+      if (isCaller) startAsCaller(partnerId);
+      else startAsCallee(partnerId);
     });
 
     socket.on('webrtc-signal', async ({ type, payload }: { type: string; payload: any }) => {
@@ -359,13 +355,25 @@ export function useVoiceChat() {
   // ── Controls ──────────────────────────────────────────────────────────────
   const startChat = () => {
     ensureAudioContext();
+    // Pre-warm remote audio element to unblock autoplay policy
+    const remoteAudio = document.getElementById('remoteAudio') as HTMLAudioElement;
+    remoteAudio?.play().catch(() => { });
+
     setConnectionStatus({ status: 'connecting', message: 'Finding someone to talk to...' });
-    socketRef.current?.emit('find-partner');
+    socketRef.current?.emit('find-partner', {
+      myGender: filters.myGender,
+      myCountry: filters.myCountry,
+      targetGender: filters.targetGender,
+      targetCountry: filters.targetCountry,
+    });
   };
 
   const stopSearching = () => {
     socketRef.current?.emit('stop-searching');
-    setConnectionStatus({ status: 'disconnected', message: 'Click Start to find someone to talk to' });
+    setConnectionStatus({
+      status: 'disconnected',
+      message: 'Click Start to find someone to talk to',
+    });
   };
 
   const endCall = () => {
@@ -374,7 +382,12 @@ export function useVoiceChat() {
   };
 
   const nextPartner = () => {
-    socketRef.current?.emit('next-partner');
+    socketRef.current?.emit('next-partner', {
+      myGender: filters.myGender,
+      myCountry: filters.myCountry,
+      targetGender: filters.targetGender,
+      targetCountry: filters.targetCountry,
+    });
     teardown();
   };
 
@@ -395,10 +408,10 @@ export function useVoiceChat() {
   const toggleMute = () => {
     const stream = localStreamRef.current;
     if (stream) {
-      const audioTracks = stream.getAudioTracks();
-      const currentMuted = !audioTracks[0]?.enabled; // if enabled is false, it means it's muted
-      audioTracks.forEach(track => track.enabled = currentMuted);
-      setIsMuted(!currentMuted);
+      const tracks = stream.getAudioTracks();
+      const currentlyMuted = !tracks[0]?.enabled;
+      tracks.forEach((t) => (t.enabled = currentlyMuted));
+      setIsMuted(!currentlyMuted);
     }
   };
 
