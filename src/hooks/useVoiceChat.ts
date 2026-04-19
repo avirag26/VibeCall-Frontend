@@ -3,7 +3,7 @@ import { io } from 'socket.io-client';
 import type { Socket } from 'socket.io-client';
 import { ConnectionStatus, ChatMessage } from '../types/chat';
 
-const BACKEND_URL = 'https://vibecall-1-54dc.onrender.com/';
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://vibecall-backend-t5we.onrender.com';
 
 export function useVoiceChat() {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
