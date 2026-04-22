@@ -24,10 +24,19 @@ export default function HomeClient() {
 
             <div className="relative z-10 w-full max-w-4xl px-4 flex flex-col items-center">
                 <header className="text-center mb-10">
-                    <h1 className="text-6xl font-black tracking-tight text-slate-800 mb-2">
-                        Vibe<span className="text-sky-500">Call</span>
+                    <h1 
+                        className="text-6xl tracking-tight mb-3 flex items-center justify-center font-bold"
+                        style={{ fontFamily: 'var(--font-quicksand), sans-serif' }}
+                    >
+                        <span className="text-slate-800">Stranger</span>
+                        <span className="text-sky-500 relative ml-2">
+                            Find
+                            <span className="absolute -right-10 -top-4 text-4xl inline-block animate-wiggle opacity-90 filter drop-shadow-md">
+                                🪐
+                            </span>
+                        </span>
                     </h1>
-                    <div className="flex items-center justify-center gap-2">
+                    <div className="flex items-center justify-center gap-2 mt-2">
                         <span className="relative flex h-2.5 w-2.5">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75" />
                             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-sky-500" />
@@ -46,6 +55,16 @@ export default function HomeClient() {
                     )}
                 </div>
             </div>
+
+            <style>{`
+              @keyframes wiggle {
+                0%, 100% { transform: rotate(-10deg) scale(1) translateY(0); }
+                50% { transform: rotate(10deg) scale(1.1) translateY(-5px); }
+              }
+              .animate-wiggle {
+                animation: wiggle 3.5s ease-in-out infinite;
+              }
+            `}</style>
         </main>
     );
 }

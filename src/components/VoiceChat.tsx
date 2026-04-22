@@ -127,15 +127,27 @@ export default function VoiceChat({ filters, onGoBack }: VoiceChatProps) {
         <audio id="remoteAudio" autoPlay playsInline />
         <audio id="localAudio" autoPlay muted playsInline />
 
-        {/* Voice Orb */}
-        <div className="flex justify-center my-4 transform transition-transform hover:scale-105 duration-500">
-          <VoiceOrb
-            isUserTalking={isUserTalking}
-            isPartnerTalking={isPartnerTalking}
-            isInCall={isInCall}
-            status={connectionStatus.status}
-          />
-        </div>
+        {/* Voice Orb OR Chat Box */}
+        {showChat && isInCall ? (
+          <div className="mb-6 animate-in zoom-in-95 duration-300">
+            <ChatBox
+              messages={messages}
+              messageInput={messageInput}
+              setMessageInput={setMessageInput}
+              sendMessage={sendMessage}
+              handleKeyPress={handleKeyPress as any}
+            />
+          </div>
+        ) : (
+          <div className="flex justify-center my-4 transform transition-transform hover:scale-105 duration-500">
+            <VoiceOrb
+              isUserTalking={isUserTalking}
+              isPartnerTalking={isPartnerTalking}
+              isInCall={isInCall}
+              status={connectionStatus.status}
+            />
+          </div>
+        )}
 
         {/* Chat Toggle */}
         {isInCall && (
@@ -163,19 +175,6 @@ export default function VoiceChat({ filters, onGoBack }: VoiceChatProps) {
                 </span>
               )}
             </button>
-          </div>
-        )}
-
-        {/* Chat Box */}
-        {showChat && isInCall && (
-          <div className="mb-6 animate-in slide-in-from-bottom-4 duration-300">
-            <ChatBox
-              messages={messages}
-              messageInput={messageInput}
-              setMessageInput={setMessageInput}
-              sendMessage={sendMessage}
-              handleKeyPress={handleKeyPress as any}
-            />
           </div>
         )}
 
