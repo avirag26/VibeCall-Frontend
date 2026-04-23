@@ -60,7 +60,7 @@ function WorldBanner({ totalUsers }: { totalUsers: number }) {
 
         return newNodes;
       });
-    }, 3000); // Trigger a blink every 2.5 seconds
+    }, 3000); // Trigger a blink every 2.5 second
 
     return () => clearInterval(interval);
   }, []);
