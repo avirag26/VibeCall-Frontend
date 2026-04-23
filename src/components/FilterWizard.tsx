@@ -65,14 +65,23 @@ function WorldBanner({ totalUsers }: { totalUsers: number }) {
     return () => clearInterval(interval);
   }, []);
 
-  // Soft background dots
-  const dots = Array.from({ length: 40 }).map((_, i) => ({
-    id: i,
-    top: `${Math.random() * 100}%`,
-    left: `${Math.random() * 100}%`,
-    size: Math.random() * 2 + 1,
-    delay: `${Math.random() * 3}s`
-  }));
+  // Soft background dots using deterministic pseudo-random values to fix SSR hydration error
+  const dots = Array.from({ length: 40 }).map((_, i) => {
+    // Math.sin provides a deterministic pseudo-random value based on the index
+    const randomTop = Math.abs(Math.sin(i * 12.9898)) * 100;
+    const randomLeft = Math.abs(Math.cos(i * 78.233)) * 100;
+    const randomSize = Math.abs(Math.sin(i * 3.1415)) * 2 + 1;
+    const randomDelay = Math.abs(Math.cos(i * 2.71828)) * 3;
+
+    // Use .toFixed(2) to fix floating point precision differences between Node (Server) and Chrome (Client)
+    return {
+      id: i,
+      top: `${randomTop.toFixed(2)}%`,
+      left: `${randomLeft.toFixed(2)}%`,
+      size: Number(randomSize.toFixed(2)),
+      delay: `${randomDelay.toFixed(2)}s`
+    };
+  });
 
   return (
     // Visual Separation added here: bg-slate-100, bottom border, and inset shadow
