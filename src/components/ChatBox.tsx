@@ -10,6 +10,7 @@ export interface ChatBoxProps {
   setMessageInput: (val: string) => void;
   sendMessage: () => void;
   handleKeyPress: (e: React.KeyboardEvent) => void;
+  onClose?: () => void;
 }
 
 export default function ChatBox({
@@ -18,6 +19,7 @@ export default function ChatBox({
   setMessageInput,
   sendMessage,
   handleKeyPress,
+  onClose,
 }: ChatBoxProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -53,20 +55,54 @@ export default function ChatBox({
             borderBottom: '1px solid rgba(255,255,255,0.1)',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
+            justifyContent: 'space-between',
             background: 'rgba(0,0,0,0.2)',
           }}
         >
-          <span
-            style={{
-              width: 8, height: 8, borderRadius: '50%',
-              background: '#34d399',
-              boxShadow: '0 0 10px #34d399',
-            }}
-          />
-          <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-            Live Chat
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span
+              style={{
+                width: 8, height: 8, borderRadius: '50%',
+                background: '#34d399',
+                boxShadow: '0 0 10px #34d399',
+              }}
+            />
+            <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+              Live Chat
+            </span>
+          </div>
+
+          {onClose && (
+            <button
+              onClick={onClose}
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                border: 'none',
+                width: '28px',
+                height: '28px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'background 0.2s',
+                color: 'rgba(255,255,255,0.7)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
+                e.currentTarget.style.color = 'white';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                e.currentTarget.style.color = 'rgba(255,255,255,0.7)';
+              }}
+              title="Close Chat"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="stroke-current">
+                <path d="M18 6L6 18M6 6l12 12" strokeWidth="2.5" strokeLinecap="round" />
+              </svg>
+            </button>
+          )}
         </div>
 
         <div className="relative" style={{ height: 350 }}>

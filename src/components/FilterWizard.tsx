@@ -25,171 +25,144 @@ const COUNTRIES = [
   'Uzbekistan', 'Venezuela', 'Vietnam', 'Yemen', 'Zimbabwe',
 ];
 
-// ── Animated World Banner (new) ──────────────────────────────────────────────
+// ── Animated World Banner (Light Theme Dynamic Constellation) ───────────────────
 function WorldBanner({ totalUsers }: { totalUsers: number }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [activeNodes, setActiveNodes] = useState(() => [
+    { id: 1, country: 'India', cx: 80, cy: 50, color: '#6366f1', visible: true },
+    { id: 2, country: 'United States', cx: 280, cy: 35, color: '#ec4899', visible: true },
+    { id: 3, country: 'Brazil', cx: 180, cy: 90, color: '#10b981', visible: true },
+    { id: 4, country: 'Germany', cx: 340, cy: 70, color: '#f59e0b', visible: true },
+    { id: 5, country: 'United Kingdom', cx: 120, cy: 105, color: '#0ea5e9', visible: true },
+  ]);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    let frame = 0;
-    let raf: number;
+    // Dynamically blink and cycle through ALL countries
+    const interval = setInterval(() => {
+      setActiveNodes(current => {
+        const newNodes = [...current];
+        const randomIndex = Math.floor(Math.random() * newNodes.length);
 
-    const stars = Array.from({ length: 55 }, () => ({
-      x: Math.random() * 400, y: Math.random() * 110,
-      r: Math.random() * 1.2 + 0.4,
-      phase: Math.random() * Math.PI * 2,
-      speed: 0.6 + Math.random() * 0.8,
-    }));
+        // Hide the node
+        newNodes[randomIndex] = { ...newNodes[randomIndex], visible: false };
 
-    const arcs = [
-      { x1: 72, y1: 42, cx: 160, cy: 10, x2: 288, y2: 30, color: '#6c63ff', delay: 40 },
-      { x1: 192, y1: 60, cx: 240, cy: 20, x2: 340, y2: 52, color: '#f472b6', delay: 90 },
-      { x1: 72, y1: 42, cx: 160, cy: 80, x2: 192, y2: 60, color: '#34d399', delay: 150 },
-      { x1: 120, y1: 68, cx: 250, cy: 30, x2: 340, y2: 52, color: '#fbbf24', delay: 210 },
-    ];
+        // Bring it back 1 second later with a new random country
+        setTimeout(() => {
+          setActiveNodes(curr => {
+            const nodes = [...curr];
+            nodes[randomIndex] = {
+              ...nodes[randomIndex],
+              country: COUNTRIES[Math.floor(Math.random() * COUNTRIES.length)],
+              visible: true
+            };
+            return nodes;
+          });
+        }, 1000);
 
-    const cities = [
-      { x: 72, y: 42, color: '#6c63ff', label: 'IN', phase: 0 },
-      { x: 288, y: 30, color: '#f472b6', label: 'US', phase: 60 },
-      { x: 192, y: 60, color: '#34d399', label: 'BR', phase: 120 },
-      { x: 340, y: 52, color: '#fbbf24', label: 'DE', phase: 180 },
-      { x: 120, y: 68, color: '#6c63ff', label: 'UK', phase: 90 },
-    ];
-
-    function roundRect(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-      c.beginPath();
-      c.moveTo(x + r, y);
-      c.lineTo(x + w - r, y);
-      c.arcTo(x + w, y, x + w, y + r, r);
-      c.lineTo(x + w, y + h - r);
-      c.arcTo(x + w, y + h, x + w - r, y + h, r);
-      c.lineTo(x + r, y + h);
-      c.arcTo(x, y + h, x, y + h - r, r);
-      c.lineTo(x, y + r);
-      c.arcTo(x, y, x + r, y, r);
-      c.closePath();
-    }
-
-    function draw() {
-      if (!ctx || !canvas) return;
-      ctx.clearRect(0, 0, 400, 110);
-      ctx.fillStyle = '#1a1a2e';
-      ctx.fillRect(0, 0, 400, 110);
-
-      // Grid dot texture
-      ctx.fillStyle = 'rgba(108,99,255,0.12)';
-      for (let gx = 8; gx < 400; gx += 18) {
-        for (let gy = 8; gy < 110; gy += 14) {
-          ctx.beginPath();
-          ctx.arc(gx, gy, 1, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-
-      // Stars twinkle
-      stars.forEach(s => {
-        const alpha = 0.15 + 0.75 * Math.abs(Math.sin(s.phase + frame * 0.008 * s.speed));
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255,255,255,${alpha})`;
-        ctx.fill();
+        return newNodes;
       });
+    }, 3000); // Trigger a blink every 2.5 seconds
 
-      // Sweep line
-      const sweepX = (frame * 1.2) % 400;
-      const sweepGrad = ctx.createLinearGradient(sweepX - 8, 0, sweepX + 8, 0);
-      sweepGrad.addColorStop(0, 'transparent');
-      sweepGrad.addColorStop(0.5, 'rgba(108,99,255,0.25)');
-      sweepGrad.addColorStop(1, 'transparent');
-      ctx.fillStyle = sweepGrad;
-      ctx.fillRect(sweepX - 8, 0, 16, 110);
-
-      // Arc connections
-      arcs.forEach(a => {
-        const t = ((frame - a.delay) % 220) / 180;
-        if (t <= 0 || t > 1.1) return;
-        const progress = Math.min(t, 1);
-        const alpha = t < 0.3 ? t / 0.3 : t > 0.8 ? 1 - (t - 0.8) / 0.3 : 1;
-        ctx.save();
-        ctx.strokeStyle = a.color;
-        ctx.lineWidth = 1.2;
-        ctx.globalAlpha = alpha * 0.6;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        const steps = Math.floor(progress * 40);
-        for (let i = 0; i <= steps; i++) {
-          const tt = i / 40;
-          const bx = (1 - tt) * (1 - tt) * a.x1 + 2 * (1 - tt) * tt * a.cx + tt * tt * a.x2;
-          const by = (1 - tt) * (1 - tt) * a.y1 + 2 * (1 - tt) * tt * a.cy + tt * tt * a.y2;
-          i === 0 ? ctx.moveTo(bx, by) : ctx.lineTo(bx, by);
-        }
-        ctx.stroke();
-        ctx.restore();
-      });
-
-      // City pulsing rings + dots
-      cities.forEach(c => {
-        const t = (frame + c.phase) % 160 / 80;
-        const r = t * 10;
-        const alpha = Math.max(0, 1 - t);
-        ctx.beginPath();
-        ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
-        ctx.strokeStyle = c.color;
-        ctx.lineWidth = 1;
-        ctx.globalAlpha = alpha * 0.6;
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-        ctx.beginPath();
-        ctx.arc(c.x, c.y, 3, 0, Math.PI * 2);
-        ctx.fillStyle = c.color;
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(c.x, c.y, 1.5, 0, Math.PI * 2);
-        ctx.fillStyle = 'white';
-        ctx.fill();
-      });
-
-      // Floating labels
-      cities.forEach((c, i) => {
-        const floatY = Math.sin(frame * 0.02 + i) * 2.5;
-        ctx.save();
-        ctx.fillStyle = c.color;
-        ctx.globalAlpha = 0.9;
-        roundRect(ctx, c.x + 5, c.y - 10 + floatY, 22, 12, 6);
-        ctx.fill();
-        ctx.fillStyle = 'white';
-        ctx.font = 'bold 7px system-ui';
-        ctx.textAlign = 'center';
-        ctx.globalAlpha = 1;
-        ctx.fillText(c.label, c.x + 16, c.y - 2 + floatY);
-        ctx.restore();
-      });
-
-      // Bottom text
-      ctx.fillStyle = 'rgba(255,255,255,0.3)';
-      ctx.font = '700 8px system-ui';
-      ctx.textAlign = 'center';
-      ctx.fillText('CONNECTING VOICES WORLDWIDE', 200, 103);
-
-      frame++;
-      raf = requestAnimationFrame(draw);
-    }
-
-    draw();
-    return () => cancelAnimationFrame(raf);
+    return () => clearInterval(interval);
   }, []);
 
+  // Soft background dots
+  const dots = Array.from({ length: 40 }).map((_, i) => ({
+    id: i,
+    top: `${Math.random() * 100}%`,
+    left: `${Math.random() * 100}%`,
+    size: Math.random() * 2 + 1,
+    delay: `${Math.random() * 3}s`
+  }));
+
   return (
-    <div className="w-full rounded-t-[1.75rem] overflow-hidden" style={{ height: '110px', background: '#1a1a2e' }}>
-      <canvas
-        ref={canvasRef}
-        width={400}
-        height={110}
-        style={{ width: '100%', height: '110px', display: 'block' }}
-      />
+    // Visual Separation added here: bg-slate-100, bottom border, and inset shadow
+    <div className="relative w-full h-[140px] bg-slate-100 rounded-t-[2.5rem] overflow-hidden border-b-[3px] border-slate-200 shadow-[inset_0_-10px_20px_rgba(0,0,0,0.02)]">
+
+      {/* Twinkling Background Dots */}
+      {dots.map((dot) => (
+        <div
+          key={dot.id}
+          className="absolute bg-slate-300 rounded-full animate-twinkle"
+          style={{
+            top: dot.top,
+            left: dot.left,
+            width: `${dot.size}px`,
+            height: `${dot.size}px`,
+            animationDelay: dot.delay
+          }}
+        />
+      ))}
+
+      {/* SVG Connecting Lines (Persistent) */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-50" viewBox="0 0 400 140" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#818cf8" />
+            <stop offset="50%" stopColor="#f472b6" />
+            <stop offset="100%" stopColor="#34d399" />
+          </linearGradient>
+        </defs>
+        <path
+          d="M 80 50 Q 180 10 280 35 T 340 70 T 180 90 T 120 105 T 80 50"
+          stroke="url(#lineGrad)"
+          strokeWidth="1.5"
+          strokeDasharray="6 6"
+          fill="none"
+          className="animate-dash"
+        />
+      </svg>
+
+      {/* Dynamic Floating Nodes */}
+      {activeNodes.map((stat, i) => (
+        <div
+          key={stat.id}
+          className={`absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2 z-10 transition-all duration-700 ease-in-out ${stat.visible ? 'opacity-100 scale-100' : 'opacity-0 scale-75'}`}
+          style={{
+            top: `${(stat.cy / 140) * 100}%`,
+            left: `${(stat.cx / 400) * 100}%`,
+            animation: `float-node 3s ease-in-out infinite alternate`,
+            animationDelay: `${i * 0.4}s`
+          }}
+        >
+          {/* Node Dot */}
+          <div className="relative flex items-center justify-center mb-1">
+            <div className="absolute w-6 h-6 rounded-full opacity-20 animate-ping" style={{ backgroundColor: stat.color, animationDuration: '2s', animationDelay: `${i * 0.3}s` }} />
+            <div className="w-2.5 h-2.5 rounded-full shadow-sm border-[1.5px] border-white" style={{ backgroundColor: stat.color }} />
+          </div>
+
+          {/* Node Label (Country Only) */}
+          <div className="bg-white/90 backdrop-blur-md px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider text-slate-700 border border-slate-200 shadow-[0_2px_8px_rgba(0,0,0,0.06)] max-w-[80px] truncate text-center">
+            {stat.country}
+          </div>
+        </div>
+      ))}
+
+      {/* Bottom Title */}
+      <div className="absolute bottom-3 w-full text-center pointer-events-none">
+        <span className="text-[7px] font-black tracking-[0.25em] text-slate-400 uppercase drop-shadow-sm">
+          Connecting Voices Worldwide
+        </span>
+      </div>
+
+      <style>{`
+        @keyframes float-node {
+          0% { transform: translate(-50%, -50%) translateY(0px); }
+          100% { transform: translate(-50%, -50%) translateY(-5px); }
+        }
+        @keyframes twinkle {
+          0%, 100% { opacity: 0.2; transform: scale(0.8); }
+          50% { opacity: 1; transform: scale(1.2); }
+        }
+        @keyframes dash {
+          to { stroke-dashoffset: -24; }
+        }
+        .animate-dash {
+          animation: dash 2s linear infinite;
+        }
+        .animate-twinkle {
+          animation: twinkle 4s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   );
 }
