@@ -92,12 +92,12 @@ export default function VoiceChat({ filters, onGoBack }: VoiceChatProps) {
         {/* Status Header */}
         <div className="flex items-center justify-between mb-8 relative z-10">
           {/* Status badge */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/50 border border-white/80 shadow-sm">
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/80 backdrop-blur-md border border-white shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
             <span
               className={`w-2 h-2 rounded-full ${badge.dot} shadow-sm ${isSearching ? 'animate-pulse' : ''
                 }`}
             />
-            <span className={`text-[10px] font-black uppercase tracking-widest ${badge.color}`}>
+            <span className={`text-[9px] font-black uppercase tracking-widest ${badge.color}`}>
               {badge.label}
             </span>
           </div>
@@ -105,10 +105,10 @@ export default function VoiceChat({ filters, onGoBack }: VoiceChatProps) {
           {/* Filter info pill */}
           <div className="flex items-center gap-1.5">
             {!isInCall && (
-              <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/50 border border-white/80 shadow-sm">
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+              <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-md border border-white shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
                   {filters.myGender === 'male' ? '♂' : '♀'}
-                  {' · '}
+                  <span className="text-slate-300 mx-1">|</span>
                   {filters.myCountry.length > 10
                     ? filters.myCountry.slice(0, 10) + '…'
                     : filters.myCountry}
@@ -119,7 +119,7 @@ export default function VoiceChat({ filters, onGoBack }: VoiceChatProps) {
         </div>
 
         {/* Connection Message */}
-        <p className="text-center text-slate-500 text-sm font-medium mb-6 italic">
+        <p className="text-center text-slate-500 text-sm font-semibold tracking-wide mb-6">
           {connectionStatus.message}
         </p>
 
@@ -127,28 +127,41 @@ export default function VoiceChat({ filters, onGoBack }: VoiceChatProps) {
         <audio id="remoteAudio" autoPlay playsInline />
         <audio id="localAudio" autoPlay muted playsInline />
 
-        {/* Voice Orb */}
-        <div className="flex justify-center my-4 transform transition-transform hover:scale-105 duration-500">
-          <VoiceOrb
-            isUserTalking={isUserTalking}
-            isPartnerTalking={isPartnerTalking}
-            isInCall={isInCall}
-            status={connectionStatus.status}
-          />
-        </div>
+        {/* Voice Orb OR Chat Box */}
+        {showChat && isInCall ? (
+          <div className="mb-6 animate-in zoom-in-95 duration-300">
+            <ChatBox
+              messages={messages}
+              messageInput={messageInput}
+              setMessageInput={setMessageInput}
+              sendMessage={sendMessage}
+              handleKeyPress={handleKeyPress as any}
+              onClose={() => setShowChat(false)}
+            />
+          </div>
+        ) : (
+          <div className="flex justify-center my-6 transform transition-transform hover:scale-[1.02] duration-500">
+            <VoiceOrb
+              isUserTalking={isUserTalking}
+              isPartnerTalking={isPartnerTalking}
+              isInCall={isInCall}
+              status={connectionStatus.status}
+            />
+          </div>
+        )}
 
         {/* Chat Toggle */}
         {isInCall && (
-          <div className="flex justify-center mb-6">
+          <div className="flex justify-center mb-8">
             <button
               onClick={() => setShowChat(!showChat)}
-              className={`relative flex items-center gap-2 px-6 py-2 rounded-full text-xs font-bold
+              className={`group relative flex items-center gap-2.5 px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest
                 transition-all duration-300 shadow-sm ${showChat
-                  ? 'bg-indigo-500 text-white shadow-indigo-200 shadow-lg'
-                  : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-100'
+                  ? 'bg-indigo-500 text-white shadow-indigo-200/50 shadow-lg hover:bg-indigo-600'
+                  : 'bg-white/90 backdrop-blur-md text-slate-600 hover:text-indigo-600 hover:bg-white border border-white shadow-[0_4px_16px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.08)] hover:-translate-y-0.5'
                 }`}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="stroke-current">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="stroke-current transition-transform group-hover:scale-110">
                 <path
                   d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"
                   strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
@@ -157,8 +170,8 @@ export default function VoiceChat({ filters, onGoBack }: VoiceChatProps) {
               {showChat ? 'Close Chat' : 'Open Messenger'}
               {!showChat && unreadCount > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center
-                  justify-center rounded-full bg-red-500 text-[10px] text-white animate-bounce
-                  shadow-lg border-2 border-white">
+                  justify-center rounded-full bg-rose-500 text-[10px] font-black text-white animate-bounce
+                  shadow-[0_4px_10px_rgba(225,29,72,0.4)] border-[1.5px] border-white">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
@@ -166,45 +179,68 @@ export default function VoiceChat({ filters, onGoBack }: VoiceChatProps) {
           </div>
         )}
 
-        {/* Chat Box */}
-        {showChat && isInCall && (
-          <div className="mb-6 animate-in slide-in-from-bottom-4 duration-300">
-            <ChatBox
-              messages={messages}
-              messageInput={messageInput}
-              setMessageInput={setMessageInput}
-              sendMessage={sendMessage}
-              handleKeyPress={handleKeyPress as any}
-            />
-          </div>
-        )}
-
-        {/* Volume Slider */}
+        {/* Custom Premium Volume Slider */}
         {isInCall && (
-          <div className="flex justify-center items-center gap-3 mb-8 bg-slate-50/50 p-3
-            rounded-2xl border border-slate-100">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="stroke-slate-400">
+          <div className="flex justify-center items-center gap-4 mb-8 bg-white/60 backdrop-blur-xl px-5 py-3.5
+            rounded-[24px] border border-white shadow-[0_8px_24px_rgba(0,0,0,0.04)] w-[90%] mx-auto">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="stroke-slate-400">
               <path
                 d="M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 010 7.07"
-                strokeWidth="2" strokeLinecap="round"
+                strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
               />
             </svg>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              defaultValue="100"
-              onChange={(e) => {
-                const el = document.getElementById('remoteAudio') as HTMLAudioElement;
-                if (el) el.volume = parseInt(e.target.value) / 100;
-              }}
-              className="w-full h-1.5 accent-indigo-500 bg-slate-200 rounded-lg appearance-none cursor-pointer"
-            />
+            <div className="relative w-full flex items-center">
+              <input
+                type="range"
+                min="0"
+                max="100"
+                defaultValue="100"
+                onChange={(e) => {
+                  const el = document.getElementById('remoteAudio') as HTMLAudioElement;
+                  if (el) el.volume = parseInt(e.target.value) / 100;
+                }}
+                className="custom-volume-slider w-full"
+              />
+            </div>
+            
+            <style>{`
+              .custom-volume-slider {
+                -webkit-appearance: none;
+                width: 100%;
+                background: transparent;
+              }
+              .custom-volume-slider:focus {
+                outline: none;
+              }
+              .custom-volume-slider::-webkit-slider-runnable-track {
+                width: 100%;
+                height: 4px;
+                cursor: pointer;
+                background: #e2e8f0;
+                border-radius: 4px;
+              }
+              .custom-volume-slider::-webkit-slider-thumb {
+                height: 20px;
+                width: 20px;
+                border-radius: 50%;
+                background: #ffffff;
+                border: 3.5px solid #6366f1; /* Premium stroke */
+                cursor: pointer;
+                -webkit-appearance: none;
+                margin-top: -8px;
+                box-shadow: 0 4px 10px rgba(99, 102, 241, 0.2);
+                transition: transform 0.15s ease-out;
+              }
+              .custom-volume-slider::-webkit-slider-thumb:hover {
+                transform: scale(1.15);
+                box-shadow: 0 6px 14px rgba(99, 102, 241, 0.3);
+              }
+            `}</style>
           </div>
         )}
 
         {/* Action Buttons */}
-        <div className="relative z-10 flex flex-col items-center gap-4">
+        <div className="relative z-10 flex flex-col items-center gap-4 mt-2">
           <ActionButtons
             isInCall={isInCall}
             status={connectionStatus.status}
@@ -218,7 +254,7 @@ export default function VoiceChat({ filters, onGoBack }: VoiceChatProps) {
           {!isInCall && (
             <button
               onClick={onGoBack}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest text-slate-500 border border-slate-200 hover:bg-slate-50 hover:text-slate-700 transition-all duration-200 shadow-sm active:scale-[0.98]"
+              className="flex items-center gap-2 px-5 py-2.5 mt-4 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 border border-transparent hover:border-slate-200 hover:bg-slate-50 transition-all duration-200 active:scale-[0.98]"
             >
               ← Change Preferences
             </button>
@@ -227,7 +263,7 @@ export default function VoiceChat({ filters, onGoBack }: VoiceChatProps) {
       </div>
 
       {/* Card shadow */}
-      <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-[80%] h-4 bg-slate-900/5 blur-2xl rounded-full" />
+      <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-[80%] h-4 bg-slate-900/5 blur-2xl rounded-full pointer-events-none" />
     </div>
   );
 }
