@@ -240,7 +240,7 @@ export default function VoiceChat({ filters, onGoBack }: VoiceChatProps) {
         )}
 
         {/* Action Buttons */}
-        <div className="relative z-10 flex flex-col items-center gap-4 mt-2">
+        <div className="relative z-10 flex flex-col items-center gap-4 mt-2 mb-8">
           <ActionButtons
             isInCall={isInCall}
             status={connectionStatus.status}
@@ -260,6 +260,7 @@ export default function VoiceChat({ filters, onGoBack }: VoiceChatProps) {
             </button>
           )}
         </div>
+
       </div>
 
       {/* Card shadow */}
