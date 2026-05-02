@@ -22,7 +22,7 @@ export default function HomeClient() {
                 <div className="absolute top-[20%] left-[10%] w-[40%] h-[40%] rounded-full bg-indigo-100/40 blur-[80px] animate-bounce [animation-duration:12s]" />
             </div>
 
-            <div className="relative z-10 w-full max-w-4xl px-4 flex flex-col items-center">
+            <div className="relative z-10 w-full px-4 sm:px-6 lg:px-8 flex flex-col items-center">
                 <header className="text-center mb-10">
                     <h1 
                         className="text-6xl tracking-tight mb-3 flex items-center justify-center font-bold"
@@ -47,7 +47,7 @@ export default function HomeClient() {
                     </div>
                 </header>
 
-                <div className="w-full max-w-md bg-white/40 backdrop-blur-2xl rounded-[2.5rem] border border-white shadow-[0_20px_50px_rgba(0,0,0,0.05)] p-2">
+                <div className="w-full max-w-full sm:max-w-md bg-white/40 backdrop-blur-2xl rounded-[2.5rem] border border-white shadow-[0_20px_50px_rgba(0,0,0,0.05)] p-2 sm:p-4">
                     {!filters ? (
                         <FilterWizard initialData={savedFilters} onComplete={handleComplete} />
                     ) : (

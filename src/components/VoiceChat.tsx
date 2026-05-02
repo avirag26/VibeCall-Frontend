@@ -53,7 +53,7 @@ export default function VoiceChat({ filters, onGoBack }: VoiceChatProps) {
     connectionStatus.status === 'waiting' || connectionStatus.status === 'connecting';
 
   return (
-    <div className="w-full max-w-md relative animate-in fade-in zoom-in duration-700">
+    <div className="w-full relative animate-in fade-in zoom-in duration-700">
 
       {/* Partner Ended Toast */}
       {showPartnerEndedNotification && (
@@ -71,7 +71,7 @@ export default function VoiceChat({ filters, onGoBack }: VoiceChatProps) {
 
       {/* Main Card */}
       <div className="relative overflow-hidden rounded-[2.5rem] bg-white/60 backdrop-blur-3xl
-        border border-white shadow-[0_32px_64px_-16px_rgba(0,0,0,0.08)] p-8
+        border border-white shadow-[0_32px_64px_-16px_rgba(0,0,0,0.08)] p-4 sm:p-6 lg:p-8
         transition-all duration-500 hover:shadow-[0_40px_80px_-16px_rgba(0,0,0,0.12)]">
 
         {/* Top shine */}

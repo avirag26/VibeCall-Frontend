@@ -32,7 +32,7 @@ export default function ChatBox({
 
   return (
     <div
-      className="mb-1 relative"
+      className="mb-1 relative w-full"
       style={{
         background: '#0f172a url("https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop")',
         backgroundSize: 'cover',
@@ -41,6 +41,7 @@ export default function ChatBox({
         borderRadius: '24px',
         overflow: 'hidden',
         boxShadow: '0 20px 40px -10px rgba(0,0,0,0.3)',
+        minHeight: '300px',
       }}
     >
       {/* Semi-transparent overlay to ensure text readability */}
@@ -105,7 +106,7 @@ export default function ChatBox({
           )}
         </div>
 
-        <div className="relative" style={{ height: 350 }}>
+        <div className="relative" style={{ height: 'clamp(250px, 50vh, 350px)' }}>
           {/* Emoji Picker Overlay */}
           {showEmojiPicker && (
             <div className="absolute inset-0 z-50 bg-slate-900/95 backdrop-blur-md">
