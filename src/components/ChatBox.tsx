@@ -193,12 +193,13 @@ export default function ChatBox({
         {/* Input row */}
         <div
           style={{
-            padding: '12px 16px',
+            padding: '12px',
             borderTop: '1px solid rgba(255,255,255,0.1)',
             display: 'flex',
-            gap: '10px',
+            gap: '8px',
             alignItems: 'center',
             background: 'rgba(0,0,0,0.2)',
+            flexWrap: 'nowrap',
           }}
         >
           <button
@@ -210,6 +211,8 @@ export default function ChatBox({
               opacity: showEmojiPicker ? 1 : 0.7,
               transition: 'opacity 0.2s, transform 0.2s',
               transform: showEmojiPicker ? 'scale(1.1)' : 'scale(1)',
+              flexShrink: 0,
+              minWidth: '32px',
             }}
             onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
             onMouseLeave={e => (e.currentTarget.style.opacity = showEmojiPicker ? '1' : '0.7')}
@@ -227,10 +230,11 @@ export default function ChatBox({
             autoComplete="off"
             style={{
               flex: 1,
-              padding: '10px 16px',
+              minWidth: '0',
+              padding: '10px 12px',
               background: 'rgba(255,255,255,0.1)',
               border: '1px solid rgba(255,255,255,0.15)',
-              borderRadius: '999px',
+              borderRadius: '20px',
               color: 'white',
               fontSize: '0.85rem',
               outline: 'none',
@@ -249,12 +253,13 @@ export default function ChatBox({
           <button
             onClick={sendMessage}
             style={{
-              width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
+              width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
               background: 'linear-gradient(135deg, #38bdf8, #3b82f6)',
               border: 'none', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               boxShadow: '0 4px 14px rgba(59,130,246,0.4)',
               transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s',
+              minWidth: '36px',
             }}
             onMouseEnter={e => {
               (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.1)';
@@ -265,24 +270,24 @@ export default function ChatBox({
               (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 14px rgba(59,130,246,0.4)';
             }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
               <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
         </div>
-      </div>
 
-      <style>{`
-        @keyframes fadeSlideIn {
-          from { opacity: 0; transform: translateY(10px) scale(0.98); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        /* Custom scrollbar for emoji picker to match */
-        .EmojiPickerReact {
-          --epr-bg-color: transparent !important;
-          border: none !important;
-        }
-      `}</style>
+        <style>{`
+          @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(10px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+          }
+          /* Custom scrollbar for emoji picker to match */
+          .EmojiPickerReact {
+            --epr-bg-color: transparent !important;
+            border: none !important;
+          }
+        `}</style>
+      </div>
     </div>
   );
 }
