@@ -305,7 +305,7 @@ export default function FilterWizard({ initialData, onComplete }: FilterWizardPr
         {/* ── Step 2: Preferences (original) ── */}
         {step === 'preferences' && (
           <div className="w-full flex flex-col items-center animate-in slide-in-from-right-8 duration-500">
-            <h2 className="text-3xl font-black text-slate-800 mb-1 text-center">Who to find</h2>
+            <h2 className="text-3xl font-black text-slate-800 mb-1 text-center">Who to match with</h2>
             <p className="text-slate-400 text-sm mb-8 text-center">
               Choose who you'd like to be matched with
             </p>
